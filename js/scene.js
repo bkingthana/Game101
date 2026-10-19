@@ -85,18 +85,14 @@
       var x = Math.floor(hash(i * 7 + 1) * W), y = 35 + Math.floor(hash(i * 13 + 5) * (H - 35));
       rect(ctx, x, y, 1, 1, hash(i) > 0.5 ? '#3f8a37' : '#74bd56');
     }
-    // dirt path from the front steps to the fields
-    rect(ctx, 14, 41, 56, 2, '#a8875a');
+    // dirt path from the signboard to the fields
+    rect(ctx, 19, 41, 51, 2, '#a8875a');
     rect(ctx, 66, 41, 4, 30, '#a8875a');
   }
 
-  function drawHouse(ctx) {
-    S.draw(ctx, 'house', 3, 13);
-  }
-
-  /* signboard of the Thanapun Farmcare shop next to the house */
+  /* Thanapun Farmcare signboard at the head of the path */
   function drawSign(ctx) {
-    var x = 38, y = 20;
+    var x = 13, y = 20;
     rect(ctx, x + 6, y + 14, 2, 7, '#55321c');
     rect(ctx, x - 1, y - 1, 16, 16, '#3b2a20');
     rect(ctx, x, y, 14, 14, '#f4ecd2');
@@ -280,7 +276,6 @@
       if (view.weather === 'flood') drawCloud(ctx, ((drift * 0.8 + 60) % (W + 40)) - 30, 1, true);
       drawHills(ctx);
       drawGround(ctx, view.season);
-      drawHouse(ctx);
       drawSign(ctx);
       drawPalm(ctx, t);
       drawPond(ctx, t, view.weather === 'drought');
