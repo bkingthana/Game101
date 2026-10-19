@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- artifact:head -->
+<title>The Magic Farmcare</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="เกมวางแผนการเกษตร 3 ปี 9 ฤดู ปลูกข้าว ข้าวโพด หอมแดง ใส่ปุ๋ย กำจัดศัตรูพืช โดยร้านธนาพันธ์ ฟาร์มแคร์">
+<meta name="theme-color" content="#12241b">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Jersey+10&family=Pixelify+Sans:wght@500;700&display=swap">
+<link rel="stylesheet" href="css/style.css">
+<!-- /artifact:head -->
+</head>
+<body>
+<!-- artifact:body -->
+<div id="app">
+  <section id="screen-title" class="screen title-screen" aria-labelledby="game-title">
+    <div class="brand"><span id="brand-logo" class="brand-logo"></span><span class="brand-text">THANAPUN FARMCARE<small>presents</small></span></div>
+    <div class="title-scene"><canvas id="title-canvas" class="px-canvas" aria-hidden="true"></canvas></div>
+    <h1 id="game-title" class="game-title"><span class="gt-small">The Magic</span><span class="gt-big">Farmcare</span></h1>
+    <p class="tagline">ปลูก ดูแล เก็บเกี่ยว 3 ปี 9 ฤดู สร้างไร่ในฝันด้วยความรู้เกษตรจริง</p>
+    <div class="title-actions">
+      <button id="btn-continue" class="btn btn-primary" hidden>เล่นต่อ<small id="continue-info"></small></button>
+      <button id="btn-new" class="btn btn-primary">เริ่มเกมใหม่</button>
+      <button id="btn-howto" class="btn">วิธีเล่น</button>
+    </div>
+    <div id="best-line" class="best-line"></div>
+    <p class="title-credit">ร้านธนาพันธ์ ฟาร์มแคร์ · ปุ๋ย เคมีเกษตร เมล็ดพันธุ์ อาหารสัตว์</p>
+  </section>
+
+  <section id="screen-game" class="screen game-screen" hidden>
+    <header class="hud">
+      <div class="hud-money"><span id="hud-coin"></span><span id="hud-money" class="num big">0</span><small>บาท</small></div>
+      <div class="hud-season"><span id="hud-year" class="eyebrow"></span><b id="hud-season-name"></b></div>
+      <div class="hud-buttons">
+        <button id="btn-sound" class="icon-btn" aria-label="ปิดเสียง"></button>
+        <button id="btn-menu" class="icon-btn" aria-label="เมนู"></button>
+      </div>
+    </header>
+    <ol id="season-track" class="season-track" aria-label="ความคืบหน้า 9 ฤดู"></ol>
+    <div class="scene-wrap"><canvas id="scene" class="px-canvas" role="img" aria-label="ไร่ของคุณ 4 แปลง แตะแปลงเพื่อเลือก"></canvas></div>
+    <ol id="stagebar" class="stagebar" aria-label="ช่วงของฤดูนี้">
+      <li data-stage="plan"><span>1</span>เตรียมปลูก</li>
+      <li data-stage="care"><span>2</span>ดูแล</li>
+      <li data-stage="harvest"><span>3</span>เก็บเกี่ยว</li>
+    </ol>
+    <main id="panel" class="panel" tabindex="-1"></main>
+    <footer class="actionbar">
+      <div id="action-info" class="action-info"></div>
+      <button id="btn-primary" class="btn btn-primary"></button>
+    </footer>
+  </section>
+
+  <section id="screen-end" class="screen end-screen" hidden></section>
+</div>
+
+<div id="sheet-backdrop" class="sheet-backdrop" hidden></div>
+<div id="sheet" class="sheet" role="dialog" aria-modal="true" aria-label="รายละเอียด" hidden><div id="sheet-body" class="sheet-body"></div></div>
+
+<div id="coach" class="coach" role="dialog" aria-label="ลุงพันธ์แนะนำ" hidden>
+  <div class="coach-box">
+    <div id="coach-face" class="coach-face"></div>
+    <div class="coach-main">
+      <div class="coach-name">ลุงพันธ์ <small>ร้านธนาพันธ์ ฟาร์มแคร์</small></div>
+      <p id="coach-text" class="coach-text" aria-live="polite"></p>
+      <div class="coach-actions">
+        <button id="coach-skip" class="btn btn-small btn-ghost">ข้ามบทสอน</button>
+        <button id="coach-next" class="btn btn-small btn-primary">ถัดไป</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+<script src="js/data.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/sprites.js"></script>
+<script src="js/scene.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+<!-- /artifact:body -->
+</body>
+</html>

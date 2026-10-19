@@ -1,0 +1,11 @@
+{
+  "name": "the-magic-farmcare",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Turn-based pixel-art farming game for mobile browsers",
+  "scripts": {
+    "sim": "node scripts/sim.js 2000",
+    "build": "node scripts/build-artifact.js",
+    "test": "NODE_PATH=\"$(npm root -g)\" node scripts/smoke-test.js"
+  }
+}
