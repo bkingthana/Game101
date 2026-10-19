@@ -12,6 +12,8 @@
     w: '#ffffff', W: '#d6e0e6', c: '#6cb8ec', C: '#2f73c0',
     n: '#f1c79a', N: '#c98e5f', h: '#3b2a20', e: '#7d8a92',
     x: '#d9473a',
+    // Thanapun Farmcare logo colors (from the brand color guide)
+    q: '#93d7ed', m: '#9ccb3c', M: '#76a028', d: '#ddb75a', u: '#a97f51',
   };
 
   var ART = {
@@ -85,11 +87,14 @@
       '.......yy.......', '.....yyYYyy.....', '...yyyYyyYyyy...', '.yyYyyyyyyyyYyy.', 'YYYYYYYYYYYYYYYY', '....hhhhhhhh....',
       '....hnnnnnnh....', '....nnknnknn....', '....nnnnnnnn....', '....nnhhhhnn....', '.....nnnnnn.....', '....GgGnnGgG....',
       '...gggggggggg...', '..gggggyyggggg..', '..gggggyyggggg..', '..gggggggggggg..'],
-    /* Thanapun Farmcare emblem 16 x 16: sprout in a gold ring */
-    logo: [
-      '.....YYYYYY.....', '...YYyyyyyyYY...', '..YyyGGGGGGyyY..', '.YyGGGGGGlwGGyY.', '.YyGGGGGlwwlGyY.', 'YyGGllGGlwlGGGyY',
-      'YyGlwwlGwlGGGGyY', 'YyGGlwwwlGGGGGyY', 'YyGGGGlwGGGGGGyY', 'YyGGGGGwGGGGGGyY', '.YyGSSSwSSSSGyY.', '.YyGSsssssSSGyY.',
-      '..YyySSSSSSyyY..', '...YYyyyyyyYY...', '.....YYYYYY.....', '................'],
+    /* Thanapun Farmcare emblem, pixel version of the real logo: sprout over sky, hills and soil */
+    brand: [
+      '.www.qqqqqq.www.', 'wmmmwwqqqqwwmmmw', 'wMMmmmwqqwmmmMMw', '.wwMMmmwwmmMMww.', '.qqwwmmmmmmwwqq.', 'qqqqqwwmmwwqqqqq',
+      'qqqqqqwmmwqqqqmm', 'qqqqqqwmmwqmmmmm', 'uuqqqqwmmwmmmmmd', 'uuuuuuwmmwmmmmdd', 'uuuuuuwmmwmmmddd', '.uuuuuuwwuudddd.',
+      '.uuuuuuuuuuuddd.', '..uuuuuuuuuudd..', '...uuuuuuuuud...', '.....uuuuuu.....'],
+    brandSmall: [
+      '.ww.qqqq.ww.', 'wmmwwqqwwmmw', 'wmmmmwwmmmmw', '.wwmmmmmmww.', 'qqqwwmmwwqqq', 'qqqqwmmwqqmm',
+      'uuqqwmmwmmmm', 'uuuuwmmwmmmd', 'uuuuwmmwmmdd', '.uuuuwwuddd.', '..uuuuuuud..', '....uuuu....'],
 
     coin: ['..yyyy..', '.yYYYYy.', 'yYyyyyYy', 'yYyYYyYy', 'yYyYYyYy', 'yYyyyyYy', '.yYYYYy.', '..yyyy..'],
     star: ['....y....', '....y....', '...yyy...', 'yyyyyyyyy', '.yyyyyyy.', '..yyyyy..', '..yy.yy..', '.yy...yy.', '.y.....y.'],

@@ -122,9 +122,10 @@ img.px { image-rendering: crisp-edges; image-rendering: pixelated; display: bloc
 
 /* ---------- title ---------- */
 
-.title-screen { display: flex; flex-direction: column; gap: 16px; padding-block: 20px 24px; }
-.brand { display: flex; align-items: center; gap: 10px; color: var(--gold); font: 700 13px/1.2 var(--font-pixel); letter-spacing: 0.14em; }
-.brand small { display: block; color: var(--on-frame-soft); font-size: 11px; letter-spacing: 0.3em; font-weight: 500; }
+.title-screen { display: flex; flex-direction: column; gap: 16px; padding-block: 18px 24px; text-align: center; }
+.brand { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.brand-img { display: block; width: 99px; height: auto; }
+.brand-presents { color: var(--on-frame-soft); font: 500 11px/1 var(--font-pixel); letter-spacing: 0.32em; }
 .game-title { margin: 4px 0 0; font-family: var(--font-pixel); font-weight: 700; line-height: 0.95; }
 .gt-small { display: block; font-size: 26px; color: var(--on-frame); letter-spacing: 0.06em; }
 .gt-big {
@@ -136,9 +137,9 @@ img.px { image-rendering: crisp-edges; image-rendering: pixelated; display: bloc
   color: transparent;
   filter: drop-shadow(4px 4px 0 var(--edge));
 }
-.tagline { color: var(--on-frame); font-size: 16px; max-width: 34ch; }
+.tagline { color: var(--on-frame); font-size: 16px; max-width: 34ch; margin-inline: auto; }
 .title-actions { display: grid; gap: 12px; }
-.best-line { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 13px; color: var(--on-frame-soft); }
+.best-line { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px; font-size: 13px; color: var(--on-frame-soft); }
 .best-line b { color: var(--on-frame); font-size: 22px; }
 .title-credit { font-size: 12px; color: #7f957a; text-align: center; }
 
@@ -286,7 +287,8 @@ img.px { image-rendering: crisp-edges; image-rendering: pixelated; display: bloc
 .event-where .plot-num { width: 20px; height: 20px; font-size: 12px; }
 .card .symptom { color: var(--ink); }
 .card .risk { color: var(--chili); font-weight: 600; font-size: 13px; }
-.shop-label { margin-top: 2px; padding-top: 8px; border-top: 2px dashed #b9c49d; font-size: 12px; font-weight: 600; color: var(--ink-soft); }
+.shop-label { display: flex; align-items: center; gap: 8px; margin-top: 2px; padding-top: 8px; border-top: 2px dashed #b9c49d; font-size: 12px; color: var(--ink-soft); line-height: 1.3; }
+.shop-label b { display: block; font-size: 13px; color: var(--ink); }
 .options { display: grid; gap: 6px; }
 
 .opt, .fert {
@@ -543,6 +545,7 @@ img.px { image-rendering: crisp-edges; image-rendering: pixelated; display: bloc
 .best-list li.mine { background: var(--gold-soft); }
 
 .end-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.end-credit { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-top: 6px; font-size: 12px; color: var(--on-frame-soft); }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }

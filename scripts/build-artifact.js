@@ -25,6 +25,12 @@ var body = between('<!-- artifact:body -->', '<!-- /artifact:body -->')
     return '<script>\n' + code + '\n</script>';
   });
 
+var MIME = { png: 'image/png', jpg: 'image/jpeg', svg: 'image/svg+xml' };
+body = body.replace(/src="(img\/[^"]+)"/g, function (_, file) {
+  var ext = file.split('.').pop();
+  return 'src="data:' + MIME[ext] + ';base64,' + fs.readFileSync(path.join(rootDir, file)).toString('base64') + '"';
+});
+
 var out = head + '\n' + body + '\n';
 fs.mkdirSync(path.join(rootDir, 'dist'), { recursive: true });
 var file = path.join(rootDir, 'dist', 'the-magic-farmcare.html');

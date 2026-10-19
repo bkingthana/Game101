@@ -111,6 +111,15 @@
     for (var ly = 34; ly < 41; ly += 2) rect(ctx, 24, ly, 3, 1, '#8a5530');
   }
 
+  /* signboard of the Thanapun Farmcare shop next to the house */
+  function drawSign(ctx) {
+    var x = 38, y = 20;
+    rect(ctx, x + 6, y + 14, 2, 7, '#55321c');
+    rect(ctx, x - 1, y - 1, 16, 16, '#3b2a20');
+    rect(ctx, x, y, 14, 14, '#f4ecd2');
+    S.draw(ctx, 'brandSmall', x + 1, y + 1);
+  }
+
   function drawPalm(ctx, t) {
     var sway = reduceMotion ? 0 : Math.round(Math.sin(t / 900));
     for (var i = 0; i < 26; i++) {
@@ -289,6 +298,7 @@
       drawHills(ctx);
       drawGround(ctx, view.season);
       drawHouse(ctx);
+      drawSign(ctx);
       drawPalm(ctx, t);
       drawPond(ctx, t, view.weather === 'drought');
       view.plots.forEach(function (p, i) { drawPlot(ctx, i, p || {}, t, view); });

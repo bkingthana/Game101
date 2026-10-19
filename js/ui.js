@@ -244,7 +244,7 @@
         '<h3>' + esc(e.name) + '</h3></div></header>' +
         '<p class="symptom"><b>อาการ</b> ' + esc(e.symptom) + '</p>' +
         '<p class="risk">ถ้าปล่อยไว้ ผลผลิตอาจเสียหายราว ' + Math.round(e.loss * 100) + '%</p>' +
-        '<div class="shop-label">ร้านธนาพันธ์ ฟาร์มแคร์ · เลือกยา 1 ชนิด</div><div class="options">';
+        '<div class="shop-label">' + S.img('brand', 2) + '<span><b>ร้านธนาพันธ์ ฟาร์มแคร์</b>เลือกยา 1 ชนิด</span></div><div class="options">';
       x.p.event.options.forEach(function (pid) {
         var pr = MF.PRODUCTS[pid];
         html += '<button class="opt" data-action="treat" data-i="' + i + '" data-p="' + pid + '" data-key="treat-' + i + '-' + pid + '" aria-pressed="' + (choice === pid) + '">' +
@@ -656,7 +656,7 @@
       return '<li class="' + (mine ? 'mine' : '') + '"><span class="num big">' + fmt(b.money) + '</span>' + starRow(b.stars, 3, 2) + '<small>' + esc(b.date) + (mine ? ' · รอบนี้' : '') + '</small></li>';
     }).join('') + '</ol></section>';
     html += '<div class="end-actions"><button class="btn btn-primary" data-action="new-game">เล่นอีกครั้ง</button><button class="btn" data-action="go-title">หน้าหลัก</button></div>' +
-      '<p class="title-credit">The Magic Farmcare · ร้านธนาพันธ์ ฟาร์มแคร์</p></div>';
+      '<div class="end-credit"><span>The Magic Farmcare นำเสนอโดย</span><img src="' + $('brand-img').src + '" width="76" height="80" alt="ธนาพันธ์ ฟาร์มแคร์"></div></div>';
     $('screen-end').innerHTML = html;
   }
 
@@ -771,7 +771,6 @@
   function boot(data) {
     A.setMusic(settings.music);
     A.setSfx(settings.sfx);
-    $('brand-logo').innerHTML = S.img('logo', 3);
     $('hud-coin').innerHTML = S.img('coin', 3);
     $('btn-menu').innerHTML = S.img('menu', 3);
     $('coach-face').innerHTML = S.img('lung', 4);

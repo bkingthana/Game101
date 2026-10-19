@@ -31,6 +31,7 @@
 | `js/scene.js` | ฉากฟาร์มเคลื่อนไหว (บ้านเรือนไทย ต้นมะพร้าว สระน้ำ ฝน หมอก) |
 | `js/audio.js` | เพลงและเสียงเอฟเฟกต์ 8-bit สร้างด้วย code |
 | `js/ui.js` | หน้าจอ ปุ่ม บทสอน การบันทึกเกม |
+| `img/logo-thanapun-dark.png` | โลโก้ร้านธนาพันธ์ ฟาร์มแคร์ แบบตัวหนังสือสีขาวสำหรับพื้นเข้ม (ตาม color guide) |
 | `scripts/sim.js` | จำลองการเล่นหลายพันเกม เพื่อเช็คความยาก |
 | `scripts/smoke-test.js` | ทดสอบเล่นจริงใน browser ครบ 9 ฤดู |
 | `scripts/build-artifact.js` | รวมทุกไฟล์เป็นไฟล์เดียว `dist/the-magic-farmcare.html` |
