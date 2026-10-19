@@ -14,6 +14,9 @@
     x: '#d9473a',
     // Thanapun Farmcare logo colors (from the brand color guide)
     q: '#93d7ed', m: '#9ccb3c', M: '#76a028', d: '#ddb75a', u: '#a97f51',
+    // farmhouse
+    a: '#e8643c', A: '#b9442a', i: '#f59a62', f: '#f7e3b5', F: '#e2c48c', j: '#b7773f', J: '#7c4a26',
+    t: '#9fdcf5', v: '#f27aa6', z: '#3f8a37',
   };
 
   var ART = {
@@ -31,6 +34,38 @@
     fallow1: ['........', '........', '........', '..l..l..', '.lgl.lg.', '..g..g..', '..gl.g..', '..g.lg..', '...gg...', '...GG...'],
     fallow2: ['..y..y..', '.yoy.yy.', '..y.oy..', '..gl.g..', '.lg.lgl.', '..g..g..', '..gl.g..', '..g.lg..', '...gg...', '...GG...'],
     idle: ['........', '........', '........', '........', '........', '........', '........', '.ssssss.', 'sSsSsSss', 'SSSSSSSS'],
+
+    /* ---- farmhouse 30 x 28: orange tile roof with Thai gold ridge tips, round windows, flower boxes ---- */
+    house: [
+      '....y....................y....',
+      '....yY..................Yy....',
+      '.....YhhhhhhhhhhhhhhhhhhY.....',
+      '.....haiiiiiiiiiiiiiiiiah.....',
+      '.....haaaaaaaaaaaaaaaaaah.....',
+      '....haAaaAaaAahhaaAaaAaaah....',
+      '....haaaaaaaahyyhaaaaaaaah....',
+      '...haaaaaaaaaahhaaaaaaaaaah...',
+      '...haAaaAaaAaaAaaAaaAaaAaah...',
+      '..haaaaaaaaaaaaaaaaaaaaaaaah..',
+      '..hAAAAAAAAAAAAAAAAAAAAAAAAh..',
+      '.hAAAAAAAAAAAAAAAAAAAAAAAAAAh.',
+      '..hhhhhhhhhhhhhhhhhhhhhhhhhh..',
+      '....hFFFFFFFFFFFFFFFFFFFFh....',
+      '....hffffffffffffffffffffh....',
+      '....hffhhhfffhhhhfffhhhffh....',
+      '....hfhwwthfhJjjJhfhwwthfh....',
+      '....hfhwtthfhjJjjhfhwtthfh....',
+      '....hfhttthfhjJjjhfhttthfh....',
+      '....hffhhhffhjJjyhffhhhffh....',
+      '....hfvlvlvfhjJjjhfvlvlvfh....',
+      '....hfJJJJJfhjJjjhfJJJJJfh....',
+      '....hhhhhhhhhjjjjhhhhhhhhh....',
+      '...hJJJJJJJJJJJJJJJJJJJJJJh...',
+      '.....j....j.jjjjjj.j....j.....',
+      '.....j....jJJJJJJJJj....j.....',
+      '.....j....jjjjjjjjjj....j.....',
+      '...zzJzzzzJJJJJJJJJJzzzzJzz...',
+    ],
 
     /* ---- tiny pests that crawl over a plot ---- */
     miniBug: ['.BB.', 'BbbB', '.b.b'],

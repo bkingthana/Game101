@@ -85,30 +85,13 @@
       var x = Math.floor(hash(i * 7 + 1) * W), y = 35 + Math.floor(hash(i * 13 + 5) * (H - 35));
       rect(ctx, x, y, 1, 1, hash(i) > 0.5 ? '#3f8a37' : '#74bd56');
     }
-    // dirt path from the house to the fields
-    rect(ctx, 30, 40, 40, 2, '#a8875a');
-    rect(ctx, 66, 40, 4, 30, '#a8875a');
+    // dirt path from the front steps to the fields
+    rect(ctx, 14, 41, 56, 2, '#a8875a');
+    rect(ctx, 66, 41, 4, 30, '#a8875a');
   }
 
-  /* Thai stilt house (เรือนไทยใต้ถุนสูง) */
   function drawHouse(ctx) {
-    var cx = 19;
-    [9, 15, 22, 28].forEach(function (x) { rect(ctx, x, 33, 1, 8, '#55321c'); });
-    rect(ctx, 7, 32, 24, 2, '#6e4426');
-    rect(ctx, 9, 24, 20, 8, '#b77a45');
-    for (var px = 11; px < 29; px += 3) rect(ctx, px, 24, 1, 8, '#9c6435');
-    rect(ctx, 12, 26, 4, 3, '#3b2a20');
-    rect(ctx, 21, 26, 4, 6, '#55321c');
-    for (var r = 0; r < 11; r++) {
-      var hw = Math.round(1 + r * 1.25);
-      rect(ctx, cx - hw, 13 + r, hw * 2, 1, r % 3 === 2 ? '#6e2a1c' : '#8b3a26');
-    }
-    rect(ctx, cx - 15, 23, 30, 1, '#5a2216');
-    // gable horns (ป้านลม)
-    rect(ctx, cx - 2, 11, 1, 2, '#c48f22'); rect(ctx, cx + 1, 11, 1, 2, '#c48f22');
-    rect(ctx, cx - 3, 10, 1, 1, '#c48f22'); rect(ctx, cx + 2, 10, 1, 1, '#c48f22');
-    // ladder
-    for (var ly = 34; ly < 41; ly += 2) rect(ctx, 24, ly, 3, 1, '#8a5530');
+    S.draw(ctx, 'house', 3, 13);
   }
 
   /* signboard of the Thanapun Farmcare shop next to the house */

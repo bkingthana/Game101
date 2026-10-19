@@ -30,7 +30,7 @@
     'ยังไม่ถึงเป้า ' + MF.CONFIG.stars[0].toLocaleString('en-US') + ' บาท ลองอ่านคำแนะนำของลุงพันธ์ทุกฤดู แล้วเล่นอีกรอบนะ',
     'ผ่านเป้าแรกแล้ว ลองปลูกพืชให้ตรงฤดู และใส่ปุ๋ยตามธาตุที่ดินขาด จะได้มากกว่านี้',
     'เก่งมาก อีกนิดเดียวจะได้ 3 ดาว ลองปลูกหอมแดงหน้าหนาว และเลือกยาให้ถูกทุกครั้ง',
-    'สุดยอด คุณคือเกษตรกรมหัศจรรย์ของร้านธนาพันธ์ ฟาร์มแคร์',
+    'สุดยอด คุณคือเกษตรกรมหัศจรรย์ของธนาพันธ์ ฟาร์มแคร์',
   ];
 
   /* ---------- small helpers ---------- */
@@ -252,7 +252,7 @@
         '<h3>' + esc(e.name) + '</h3></div></header>' +
         '<p class="symptom"><b>อาการ</b> ' + esc(e.symptom) + '</p>' +
         '<p class="risk">ถ้าปล่อยไว้ ผลผลิตอาจเสียหายราว ' + Math.round(e.loss * 100) + '%</p>' +
-        '<div class="shop-label">' + S.img('brand', 2) + '<span><b>ร้านธนาพันธ์ ฟาร์มแคร์</b>เลือกยา 1 ชนิด</span></div><div class="options">';
+        '<div class="shop-label">' + S.img('brand', 2) + '<span><b>ธนาพันธ์ ฟาร์มแคร์</b>เลือกยา 1 ชนิด</span></div><div class="options">';
       x.p.event.options.forEach(function (pid) {
         var pr = MF.PRODUCTS[pid];
         html += '<button class="opt" data-action="treat" data-i="' + i + '" data-p="' + pid + '" data-key="treat-' + i + '-' + pid + '" aria-pressed="' + (choice === pid) + '">' +
