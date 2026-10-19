@@ -539,7 +539,7 @@
   function renderTitle() {
     var save = store.get(KEYS.save, null);
     var cont = $('btn-continue');
-    if (save && save.v === 2 && !save.over) {
+    if (E.isCurrentSave(save)) {
       var si = E.seasonOf(save);
       cont.hidden = false;
       $('continue-info').textContent = (ONE_YEAR ? '' : 'ปีที่ ' + si.year + ' · ') + si.season.name + ' · ' + fmt(save.money) + ' บาท';
@@ -570,7 +570,7 @@
 
   function continueGame() {
     var save = store.get(KEYS.save, null);
-    if (!save) { startNewGame(); return; }
+    if (!E.isCurrentSave(save)) { startNewGame(); return; }
     state = save;
     enterGame();
   }
@@ -789,7 +789,8 @@
     titleScene = MF.createScene($('title-canvas'));
     bind();
 
-    if (data && data.state && data.screen === 'game') {
+    // a live republish carries the open game over; an older version's game is dropped
+    if (data && data.screen === 'game' && E.isCurrentSave(data.state)) {
       state = data.state;
       enterGame();
     } else {

@@ -5,6 +5,7 @@
   var C = MF.CONFIG;
   var NUTRIENTS = ['N', 'P', 'K'];
   var FERT_KEEP = 0.7; // share of fertilizer that stays in the soil after the season
+  var SAVE_VERSION = 2; // bump when a change makes older saved games invalid (v2 = one-year game)
 
   /* ---------- helpers ---------- */
 
@@ -84,7 +85,7 @@
 
   function newGame(seed) {
     var state = {
-      v: 2, // v2 = one-year game; older 3-year saves are ignored
+      v: SAVE_VERSION,
       rng: seed >>> 0 || 1,
       money: C.startMoney,
       season: 0,
@@ -320,6 +321,12 @@
     beginSeason(state);
   }
 
+  /* true only for an unfinished game from this version that fits the current game length */
+  function isCurrentSave(s) {
+    return !!s && s.v === SAVE_VERSION && !s.over && typeof s.season === 'number' &&
+      s.season >= 0 && s.season < totalSeasons() && Array.isArray(s.plots) && s.plots.length === MF.PLOTS.length;
+  }
+
   function stars(money) {
     return C.stars.filter(function (t) { return money >= t; }).length;
   }
@@ -346,6 +353,7 @@
     harvest: harvest,
     nextSeason: nextSeason,
     stars: stars,
+    isCurrentSave: isCurrentSave,
   };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = MF;

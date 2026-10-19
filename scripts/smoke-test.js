@@ -24,6 +24,22 @@ fs.mkdirSync(outDir, { recursive: true });
     for (var n = 0; n < 10 && (await page.isVisible('#coach')); n++) await page.click('#coach-next');
   }
 
+  // A live republish hands the open game to the new page through window.claude.hot. A game from an
+  // older version (here: the 3-year game, season 5) must not be resumed, or the HUD reads "ฤดูที่ 5 / 3".
+  var oldPage = await context.newPage();
+  oldPage.on('pageerror', function (e) { errors.push(String(e)); });
+  await oldPage.addInitScript(function () {
+    window.claude = { hot: { data: { screen: 'game', state: { v: 1, rng: 7, money: 61000, season: 4, stage: 'plan', over: null,
+      plots: [0, 1, 2, 3].map(function () { return { soil: { N: 40, P: 40, K: 40 }, use: 'idle', basal: null, top: null, lastUse: 'rice', event: null }; }),
+      weather: { actual: 'normal', forecast: 'normal', respond: false }, results: null, history: [], seasonCost: 0, tutorial: {},
+      stats: { treated: 0, correct: 0, kg: { rice: 0, corn: 0, shallot: 0 }, revenue: 0, cost: 0 } } } } };
+  });
+  await oldPage.goto(url);
+  await oldPage.waitForTimeout(400);
+  if (await oldPage.isVisible('#screen-game')) errors.push('old-version game was resumed: HUD shows ' + (await oldPage.textContent('#hud-year')));
+  if (!(await oldPage.isVisible('#screen-title'))) errors.push('title screen not shown after old-version live update');
+  await oldPage.close();
+
   await page.goto(url);
   await page.waitForTimeout(600);
   await shot('01-title');
