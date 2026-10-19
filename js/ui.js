@@ -4,7 +4,7 @@
   var doc = root.document;
   function $(id) { return doc.getElementById(id); }
 
-  var KEYS = { save: 'tmf.save.v1', settings: 'tmf.settings.v1', best: 'tmf.best.v1' };
+  var KEYS = { save: 'tmf.save.v2', settings: 'tmf.settings.v1', best: 'tmf.best.v2' };
   // localStorage can be missing or blocked (private mode, previews), so every access is guarded
   var store = {
     get: function (k, fallback) { try { var v = root.localStorage.getItem(k); return v ? JSON.parse(v) : fallback; } catch (e) { return fallback; } },
@@ -27,9 +27,9 @@
   var SEASON_SHORT = { rain: 'ฝน', cool: 'หนาว', hot: 'ร้อน' };
   var RANKS = ['ชาวไร่ฝึกหัด', 'ชาวไร่มือใหม่', 'ชาวไร่มืออาชีพ', 'เกษตรกรมหัศจรรย์'];
   var END_MSG = [
-    'ยังไม่ถึงเป้า 50,000 บาท ลองอ่านคำแนะนำของลุงพันธ์ทุกฤดู แล้วเล่นอีกรอบนะ',
+    'ยังไม่ถึงเป้า ' + MF.CONFIG.stars[0].toLocaleString('en-US') + ' บาท ลองอ่านคำแนะนำของลุงพันธ์ทุกฤดู แล้วเล่นอีกรอบนะ',
     'ผ่านเป้าแรกแล้ว ลองปลูกพืชให้ตรงฤดู และใส่ปุ๋ยตามธาตุที่ดินขาด จะได้มากกว่านี้',
-    'เก่งมาก อีกนิดเดียวจะได้ 3 ดาว ลองปลูกหอมแดงหน้าหนาว และพักดินหน้าร้อน',
+    'เก่งมาก อีกนิดเดียวจะได้ 3 ดาว ลองปลูกหอมแดงหน้าหนาว และเลือกยาให้ถูกทุกครั้ง',
     'สุดยอด คุณคือเกษตรกรมหัศจรรย์ของร้านธนาพันธ์ ฟาร์มแคร์',
   ];
 
@@ -54,6 +54,14 @@
     var out = '';
     for (var i = 0; i < max; i++) out += S.img(i < n ? 'star' : 'starOff', scale);
     return out;
+  }
+
+  var ONE_YEAR = MF.CONFIG.years === 1;
+
+  function lengthText() { return MF.CONFIG.years + ' ปี ' + E.totalSeasons() + ' ฤดู'; }
+
+  function goalText() {
+    return MF.CONFIG.stars.map(function (v, i) { return (i + 1) + ' ดาวที่ ' + fmt(v); }).join(' · ') + ' บาท';
   }
 
   function seasonLabel() {
@@ -112,13 +120,13 @@
   function renderHud(animateMoney) {
     var s = seasonLabel();
     setMoney(animateMoney);
-    $('hud-year').textContent = 'ปีที่ ' + s.year + ' / ' + MF.CONFIG.years;
+    $('hud-year').textContent = ONE_YEAR ? 'ฤดูที่ ' + (state.season + 1) + ' / ' + E.totalSeasons() : 'ปีที่ ' + s.year + ' / ' + MF.CONFIG.years;
     $('hud-season-name').textContent = s.name;
     var track = '';
     for (var i = 0; i < E.totalSeasons(); i++) {
       var id = MF.SEASONS[i % 3].id;
       var cls = i < state.season ? 'done' : i === state.season ? 'now' : '';
-      track += '<li class="pip pip-' + id + ' ' + cls + '" title="ปีที่ ' + (Math.floor(i / 3) + 1) + ' ' + MF.SEASONS[i % 3].name + '"></li>';
+      track += '<li class="pip pip-' + id + ' ' + cls + '" title="' + (ONE_YEAR ? '' : 'ปีที่ ' + (Math.floor(i / 3) + 1) + ' ') + MF.SEASONS[i % 3].name + '"></li>';
     }
     $('season-track').innerHTML = track;
     Array.prototype.forEach.call(doc.querySelectorAll('#stagebar li'), function (li) {
@@ -294,7 +302,7 @@
   function renderHarvest() {
     var s = seasonLabel();
     var res = state.results;
-    var html = '<div class="receipt"><div class="receipt-head"><b>ใบสรุปผลผลิต</b><span>ปีที่ ' + s.year + ' · ' + esc(s.name) + '</span></div>';
+    var html = '<div class="receipt"><div class="receipt-head"><b>ใบสรุปผลผลิต</b><span>' + (ONE_YEAR ? '' : 'ปีที่ ' + s.year + ' · ') + esc(s.name) + ' (' + esc(s.months) + ')</span></div>';
     res.plots.forEach(function (r, i) {
       var crop = MF.CROPS[r.use];
       html += '<div class="r-plot"><div class="r-line">' + plotNum(i) + '<span class="r-icon">' + useIcon(r.use, 3) + '</span>' +
@@ -317,7 +325,7 @@
     var last = state.season >= E.totalSeasons() - 1;
     $('action-info').innerHTML = '<span>กำไรฤดูนี้</span><b class="num big ' + (res.profit >= 0 ? 'pos' : 'neg') + '">' + (res.profit >= 0 ? '+' : '−') + fmt(Math.abs(res.profit)) + '</b>';
     var btn = $('btn-primary');
-    btn.textContent = last ? 'ดูผลสรุป 3 ปี' : 'ฤดูถัดไป';
+    btn.textContent = last ? 'ดูผลสรุป' : 'ฤดูถัดไป';
     btn.disabled = false;
   }
 
@@ -459,9 +467,9 @@
       ['sun', 'เตรียมปลูก', 'ดูพยากรณ์อากาศ แตะแต่ละแปลงเพื่อเลือกพืชให้เหมาะกับฤดู และเลือกปุ๋ยรองพื้นตามธาตุที่ดินขาด'],
       ['bug', 'ดูแล', 'อากาศจริงจะเปิดเผย อาจเจอแมลง โรค หรือวัชพืช เลือกยาให้ตรงปัญหา และใส่ปุ๋ยแต่งหน้าได้อีกแปลงละครั้ง'],
       ['coin', 'เก็บเกี่ยว', 'ขายผลผลิตตามราคาคงที่ ดูสรุปว่าอะไรทำให้ผลผลิตลด แล้วปรับแผนฤดูถัดไป'],
-      ['star', 'เป้าหมาย', 'เริ่ม 20,000 บาท เล่น 3 ปี 9 ฤดู ได้ 1 ดาวที่ 50,000 · 2 ดาวที่ 100,000 · 3 ดาวที่ 150,000 บาท ถ้าเงินเหลือไม่ถึง 1,000 บาทจะล้มละลาย'],
+      ['star', 'เป้าหมาย', 'เริ่ม ' + fmt(MF.CONFIG.startMoney) + ' บาท เล่น ' + lengthText() + ' (ฝน หนาว ร้อน) ได้ ' + goalText() + ' ถ้าเงินเหลือไม่ถึง ' + fmt(MF.CONFIG.minMoneyToContinue) + ' บาทจะล้มละลาย'],
     ];
-    return '<div class="sheet-head"><div class="sheet-title"><h2>วิธีเล่น</h2><p>1 ฤดูมี 3 ช่วง เล่นจบราว 10-15 นาที</p></div><button class="icon-btn close-btn" data-action="close-sheet" aria-label="ปิด">×</button></div>' +
+    return '<div class="sheet-head"><div class="sheet-title"><h2>วิธีเล่น</h2><p>1 ฤดูมี 3 ช่วง เล่นจบราว 5 นาที</p></div><button class="icon-btn close-btn" data-action="close-sheet" aria-label="ปิด">×</button></div>' +
       '<ol class="howto">' + rows.map(function (r) {
         return '<li><span class="howto-icon">' + S.img(r[0], r[0] === 'coin' || r[0] === 'star' ? 4 : 3) + '</span><div><b>' + r[1] + '</b><p>' + r[2] + '</p></div></li>';
       }).join('') + '</ol>' +
@@ -469,7 +477,7 @@
       '<li>ข้าวชอบฤดูฝน หอมแดงชอบฤดูหนาว ข้าวโพดปลูกได้ทั้งฝนและหนาว</li>' +
       '<li>แปลงที่ลุ่มเสี่ยงน้ำท่วม แปลงที่ดอนเสี่ยงแล้ง แปลงติดสระสูบน้ำได้ถูก</li>' +
       '<li>ปลูกพืชเดิมซ้ำแปลงเดิม โรคและแมลงจะมากขึ้น ใส่ไนโตรเจนมากไปก็เช่นกัน</li>' +
-      '<li>ฤดูร้อนน้ำน้อย พักดินหว่านปอเทืองช่วยเติมไนโตรเจนให้ดิน</li>' +
+      '<li>ฤดูร้อนน้ำน้อย ทุกพืชได้ผลผลิตต่ำ แปลงติดสระสูบน้ำได้ถูกกว่า</li>' +
       '</ul></div>';
   }
 
@@ -531,10 +539,10 @@
   function renderTitle() {
     var save = store.get(KEYS.save, null);
     var cont = $('btn-continue');
-    if (save && save.v === 1 && !save.over) {
+    if (save && save.v === 2 && !save.over) {
       var si = E.seasonOf(save);
       cont.hidden = false;
-      $('continue-info').textContent = 'ปีที่ ' + si.year + ' · ' + si.season.name + ' · ' + fmt(save.money) + ' บาท';
+      $('continue-info').textContent = (ONE_YEAR ? '' : 'ปีที่ ' + si.year + ' · ') + si.season.name + ' · ' + fmt(save.money) + ' บาท';
     } else {
       cont.hidden = true;
     }
@@ -618,7 +626,8 @@
 
   function moneyChart() {
     var hist = state.history;
-    var top = Math.max(150000, Math.max.apply(null, hist.map(function (h) { return h.money; }).concat([MF.CONFIG.startMoney])));
+    var goals = MF.CONFIG.stars;
+    var top = Math.max(goals[goals.length - 1] * 1.1, Math.max.apply(null, hist.map(function (h) { return h.money; }).concat([MF.CONFIG.startMoney])));
     var lines = MF.CONFIG.stars.map(function (v) {
       return '<span class="goal-line" style="bottom:' + (v / top) * 100 + '%"><em>' + v / 1000 + 'k</em></span>';
     }).join('');
@@ -626,10 +635,11 @@
       var sid = MF.SEASONS[h.season % 3].id;
       return '<div class="bar-col"><span class="bar-val num">' + Math.round(h.money / 1000) + 'k</span>' +
         '<span class="mbar mbar-' + sid + '" style="height:' + Math.max(1, (h.money / top) * 100) + '%"></span>' +
-        '<span class="bar-lab">' + SEASON_SHORT[sid] + '<small>ปี ' + (Math.floor(h.season / 3) + 1) + '</small></span></div>';
+        '<span class="bar-lab">' + SEASON_SHORT[sid] + (ONE_YEAR ? '' : '<small>ปี ' + (Math.floor(h.season / 3) + 1) + '</small>') + '</span></div>';
     }).join('');
-    return '<div class="money-chart" role="img" aria-label="กราฟเงินคงเหลือหลังเก็บเกี่ยวแต่ละฤดู"><div class="chart-area">' + lines + bars + '</div>' +
-      '<p class="chart-note">เส้นประ = เป้าหมาย 1 ดาว (50k) · 2 ดาว (100k) · 3 ดาว (150k) บาท</p></div>';
+    return '<div class="money-chart" role="img" aria-label="กราฟเงินคงเหลือหลังเก็บเกี่ยวแต่ละฤดู">' +
+      '<div class="chart-area" style="grid-template-columns:repeat(' + E.totalSeasons() + ',minmax(0,1fr))">' + lines + bars + '</div>' +
+      '<p class="chart-note">เส้นประ = เป้าหมาย ' + goals.map(function (v, i) { return (i + 1) + ' ดาว (' + v / 1000 + 'k)'; }).join(' · ') + ' บาท</p></div>';
   }
 
   function renderEnd(entry, best) {
@@ -637,7 +647,7 @@
     var bankrupt = state.over === 'bankrupt';
     var st = state.stats;
     var html = '<div class="end-wrap">' +
-      '<div class="end-head"><span class="eyebrow">' + (bankrupt ? 'เงินทุนหมดก่อนครบ 3 ปี' : 'ครบ 3 ปี 9 ฤดูแล้ว') + '</span>' +
+      '<div class="end-head"><span class="eyebrow">' + (bankrupt ? 'เงินทุนหมดก่อนครบ ' + MF.CONFIG.years + ' ปี' : 'ครบ ' + lengthText() + 'แล้ว') + '</span>' +
       '<h1>' + (bankrupt ? 'ล้มละลาย' : RANKS[stars]) + '</h1></div>' +
       '<div class="end-stars">' + [0, 1, 2].map(function (i) { return '<span class="end-star" style="--d:' + i * 0.35 + 's">' + S.img(i < stars ? 'star' : 'starOff', 6) + '</span>'; }).join('') + '</div>' +
       '<div class="end-money"><small>เงินสุดท้าย</small><b class="num big">' + fmt(state.money) + '</b><small>บาท</small></div>' +
@@ -727,7 +737,7 @@
         closeSheet();
         if (state && state.stage === 'plan') { coach('welcome'); } else if (state) coach(state.stage);
         break;
-      case 'confirm-restart': sfx('tap'); openSheet('confirm', confirmHtml('เกมที่เล่นอยู่จะหายไป แล้วเริ่มปีที่ 1 ด้วยทุน 20,000 บาท', 'new-game')); break;
+      case 'confirm-restart': sfx('tap'); openSheet('confirm', confirmHtml('เกมที่เล่นอยู่จะหายไป แล้วเริ่มฤดูฝนใหม่ด้วยทุน ' + fmt(MF.CONFIG.startMoney) + ' บาท', 'new-game')); break;
       case 'new-game': sfx('select'); startNewGame(); break;
       case 'go-title': sfx('tap'); closeSheet(); $('coach').hidden = true; coachKey = null; coachQueue = []; renderTitle(); break;
     }

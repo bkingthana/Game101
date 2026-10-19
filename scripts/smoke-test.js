@@ -1,4 +1,4 @@
-/* End-to-end check in headless Chromium at phone size: plays a whole game through the real UI,
+/* End-to-end check in headless Chromium at phone size: plays a whole game (every season) through the real UI,
    fails on any console error, and saves screenshots.
    Run: NODE_PATH="$(npm root -g)" node scripts/smoke-test.js [screenshot-dir] [page-url] */
 var path = require('path');
@@ -33,9 +33,10 @@ fs.mkdirSync(outDir, { recursive: true });
   await shot('02-welcome-coach');
   await dismissCoach();
 
-  for (var season = 0; season < 9; season++) {
+  var seasons = await page.evaluate(function () { return MF.engine.totalSeasons(); });
+  for (var season = 0; season < seasons; season++) {
     var info = await page.evaluate(function () {
-      var s = JSON.parse(localStorage.getItem('tmf.save.v1'));
+      var s = JSON.parse(localStorage.getItem('tmf.save.v2'));
       return { season: s.season, money: s.money, id: ['rain', 'cool', 'hot'][s.season % 3] };
     });
     var plan = info.id === 'rain' ? ['rice', 'corn', 'corn', 'corn']
@@ -59,7 +60,7 @@ fs.mkdirSync(outDir, { recursive: true });
 
     // care: answer every pest correctly, respond to weather, top-dress with urea
     var fixes = await page.evaluate(function () {
-      var s = JSON.parse(localStorage.getItem('tmf.save.v1'));
+      var s = JSON.parse(localStorage.getItem('tmf.save.v2'));
       return s.plots.map(function (p) { return p.event ? MF.EVENTS[p.event.id].correct[0] : null; });
     });
     for (var j = 0; j < 4; j++) {
@@ -80,7 +81,7 @@ fs.mkdirSync(outDir, { recursive: true });
     await dismissCoach();
     if (season === 0) await shot('06-harvest');
 
-    if (season === 3) {
+    if (season === 1) {
       // reload mid-game: the title screen must offer to continue
       await page.reload();
       await page.waitForTimeout(400);

@@ -84,7 +84,7 @@
 
   function newGame(seed) {
     var state = {
-      v: 1,
+      v: 2, // v2 = one-year game; older 3-year saves are ignored
       rng: seed >>> 0 || 1,
       money: C.startMoney,
       season: 0,

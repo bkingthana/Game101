@@ -37,7 +37,7 @@ var strategies = {
         var use;
         if (season === 'rain') use = i === 0 || s.weather.forecast === 'flood' ? 'rice' : 'corn';
         else if (season === 'cool') use = s.money - E.planCost(s) > 8000 ? 'shallot' : 'corn';
-        else use = i === 3 ? 'corn' : 'fallow';
+        else use = i === 3 ? 'corn' : 'idle'; // last season: only the pond plot pays for its water
         if (p.lastUse === use && use !== 'fallow' && season !== 'cool') use = use === 'rice' ? 'corn' : 'rice';
         E.setPlan(s, i, use, E.isCrop(use) ? bestBasal(p, use) : null);
         if (E.planCost(s) > s.money - 1500) E.setPlan(s, i, 'fallow', null);
@@ -112,6 +112,7 @@ Object.keys(strategies).forEach(function (name) {
     if (s.over === 'bankrupt') bankrupt++;
   }
   money.sort(function (a, b) { return a - b; });
+  if (process.env.PCT) console.log(name, [0.05, 0.1, 0.25, 0.5, 0.75, 0.9].map(function (p) { return q(money, p); }).join(' '));
   var mean = Math.round(money.reduce(function (a, b) { return a + b; }, 0) / money.length);
   console.log(
     name.padEnd(7),
