@@ -40,9 +40,9 @@
 ## คำสั่งสำหรับนักพัฒนา
 
 ```bash
-npm run sim      # เช็คสมดุลเกม (ผลของผู้เล่นแบบเก่ง / พอใช้ / มั่ว)
-npm run build    # สร้างไฟล์เดียวใน dist/
-npm test         # เล่นทดสอบใน Chromium (ต้องมี playwright)
+npm run sim              # เช็คสมดุลเกม (ผลของผู้เล่นแบบเก่ง / พอใช้ / มั่ว)
+npm run build:artifact   # สร้างไฟล์เดียวใน dist/ (สำหรับลิงก์ claude.ai)
+npm test                 # เล่นทดสอบใน Chromium (ต้องมี playwright)
 ```
 
 ผล `npm run sim` ปัจจุบัน (2,000 เกมต่อแบบ, 1 ปี):

@@ -1,0 +1,7 @@
+# The site is the static files at the repo root (index.html, css/, js/, img/).
+# Developer tools and build output are not part of the public site.
+scripts/
+dist/
+screenshots/
+README.md
+package.json

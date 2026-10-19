@@ -5,7 +5,7 @@
   "description": "Turn-based pixel-art farming game for mobile browsers",
   "scripts": {
     "sim": "node scripts/sim.js 2000",
-    "build": "node scripts/build-artifact.js",
+    "build:artifact": "node scripts/build-artifact.js",
     "test": "NODE_PATH=\"$(npm root -g)\" node scripts/smoke-test.js"
   }
 }
