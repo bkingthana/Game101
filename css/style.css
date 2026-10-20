@@ -128,7 +128,7 @@ img.px { image-rendering: crisp-edges; image-rendering: pixelated; display: bloc
 .brand-img { display: block; width: 99px; height: auto; }
 .brand-presents { color: var(--on-frame-soft); font: 500 11px/1 var(--font-pixel); letter-spacing: 0.32em; }
 /* the cover picture (js/cover.js) is 160 x 120, taller than the farm scene, in a light card-style frame */
-.title-scene .px-canvas { aspect-ratio: 160 / 120; background: #62b4dd; border-color: var(--paper); box-shadow: 0 0 0 3px var(--edge), 0 7px 0 var(--edge); }
+.title-scene .px-canvas { aspect-ratio: 160 / 120; background: #6dbfe2; border-color: var(--paper); box-shadow: 0 0 0 3px var(--edge), 0 7px 0 var(--edge); }
 .game-title { margin: 4px 0 0; font-family: var(--font-pixel); font-weight: 700; line-height: 0.95; }
 .gt-small { display: block; font-size: 26px; color: var(--on-frame); letter-spacing: 0.06em; }
 .gt-big {

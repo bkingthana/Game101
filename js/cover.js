@@ -4,7 +4,8 @@
      A  Lung Phan from the waist up, smiling over a woven basket of harvest, in front of banded fields
      B  one isometric farm plot floating in the sky: vegetable and rice rows, a thatched hut, a water jar
      C  the plot from B with a small Lung Phan standing on it, holding the basket
-   Lung Phan wears the hat, shirt and skin colours of his in-game sprites; everything else is in CI colours.
+   Lung Phan wears the hat, shirt and skin colours of his in-game sprites; everything else is in CI colours,
+   and nothing carries a brand, badge or label.
    Still parts are painted once; each frame redraws only the small moving bits. createCover(canvas) has
    start() and stop() like createScene, and draws one still frame when the viewer prefers reduced motion. */
 (function (root) {
@@ -23,7 +24,7 @@
     brown: ['#c9a070', '#aa7f4c', '#7a5631', '#5c4026'],
     ink: '#4d4d4d', dark: '#2f2f2f', cream: '#f4ecd2', white: '#ffffff',
   };
-  var LUNG = { hat: [P.y, P.Y], shirt: [P.l, P.g, P.G], skin: [P.n, P.N], hair: P.h, eye: P.k, pants: P.C };
+  var LUNG = { hat: [P.y, P.Y], shirt: [P.l, P.g, P.G], skin: [P.n, P.N], hair: P.h, eye: P.k };
 
   /* ---------- pixel toolkit ---------- */
   function rect(ctx, x, y, w, h, c) { ctx.fillStyle = c; ctx.fillRect(x, y, w, h); }
@@ -126,14 +127,15 @@
     return cv;
   }
 
+  // a cloud sliding slowly to the right and coming round again; x0 is where it starts (and stays when still)
   function drift(ctx, img, x0, y, speed, t) {
-    var span = W + img.width, x = ((x0 + (reduceMotion ? 0 : t) * speed) % span + span) % span - img.width;
+    var span = W + img.width, x = ((x0 + img.width + (reduceMotion ? 0 : t) * speed) % span) - img.width;
     ctx.drawImage(img, Math.round(x), y);
   }
 
   /* ---------- the floating plot (B and C) ---------- */
   // an isometric diamond: p runs from the left corner to the top corner, q from the left corner to the bottom
-  var ISO = { x: 24, y: 58, a: 56, b: 28, depth: 16 };
+  var ISO = { x: 18, y: 63, a: 62, b: 31, depth: 17 };
   function iso(p, q) { return [ISO.x + ISO.a * (p + q), ISO.y - ISO.b * p + ISO.b * q]; }
   function unIso(x, y) {
     var s = (x - ISO.x) / ISO.a, d = (y - ISO.y) / ISO.b;
@@ -143,71 +145,69 @@
   // a grass bund between them and round the edge, and a grass yard at the back corner for the hut
   function plotZone(p, q) {
     if (p < 0.05 || p > 0.95 || q < 0.05 || q > 0.95) return 'grass';
-    if (p > 0.66 && q < 0.5) return 'yard';
+    if (p > 0.6 && q < 0.5) return 'yard';
     if (q < 0.47) return 'veg';
     if (q < 0.55) return 'bund';
     return 'rice';
   }
-  var VEG_ROWS = [0.13, 0.215, 0.3, 0.385], RICE_ROWS = [0.61, 0.69, 0.77, 0.85];
+  var VEG_ROWS = [0.15, 0.27, 0.39], RICE_ROWS = [0.64, 0.76, 0.88];
 
   function paintPlot(ctx) {
-    var g = new Grid(), d = ISO.depth;
-    // the soil showing on the two sides, in layers with wavy edges and a few stones
-    for (var x = ISO.x; x <= ISO.x + 2 * ISO.a; x++) {
-      var left = x <= ISO.x + ISO.a;
-      var top = left ? ISO.y + (x - ISO.x) * 0.5 : ISO.y + ISO.b - (x - ISO.x - ISO.a) * 0.5;
-      top = Math.ceil(top);
+    var g = new Grid(), d = ISO.depth, bottom = {};
+    // the top: grass, and furrowed soil under the crop rows
+    for (var y = ISO.y - ISO.b; y <= ISO.y + ISO.b; y++) {
+      for (var x = ISO.x; x <= ISO.x + 2 * ISO.a; x++) {
+        var pq = unIso(x + 0.5, y + 0.5), p = pq[0], q = pq[1];
+        if (p < 0 || p > 1 || q < 0 || q > 1) continue;
+        var zone = plotZone(p, q), h = hash(x * 131 + y * 977), c;
+        if (zone === 'veg' || zone === 'rice') {
+          var rows = zone === 'veg' ? VEG_ROWS : RICE_ROWS, near = 1;
+          rows.forEach(function (r) { near = Math.min(near, Math.abs(q - r)); });
+          c = near < 0.03 ? C.brown[2] : near > 0.045 ? C.brown[1] : C.brown[0];
+        } else if (zone === 'yard' && p > 0.63 && p < 0.96 && q > 0.32 && q < 0.38) {
+          c = C.green[2]; // the hut's shadow, away from the light
+        } else {
+          c = h < 0.1 ? C.green[0] : h > 0.94 ? C.green[2] : C.green[1];
+        }
+        g.set(x, y, c);
+        bottom[x] = Math.max(bottom[x] === undefined ? -1 : bottom[x], y);
+      }
+    }
+    // the front edge of the grass catches the light, and the soil shows below it in wavy layers with stones
+    Object.keys(bottom).forEach(function (key) {
+      var x = +key, top = bottom[x], left = x < ISO.x + ISO.a;
+      g.set(x, top, C.green[0]);
       var steps = left ? [C.green[1], C.brown[0], C.brown[1], C.brown[2]] : [C.green[2], C.brown[1], C.brown[2], C.brown[3]];
       var wave = Math.round(Math.sin(x / 3.7) * 0.8 + Math.sin(x / 8.3));
-      var hang = hash(x * 13) < 0.35 ? 1 + Math.floor(hash(x * 7) * 3) : 0; // ragged roots and clods under the plot
+      var corner = Math.abs(x - ISO.x - ISO.a) < 4; // keep the bottom corner a clean point
+      var hang = !corner && hash(x * 13) < 0.35 ? 1 + Math.floor(hash(x * 7) * 3) : 0; // ragged roots and clods under the plot
       for (var k = 1; k <= d + hang; k++) {
         var c = k <= 2 ? steps[0] : k <= 6 + wave ? steps[1] : k <= 11 + wave ? steps[2] : steps[3];
         if (k > 3 && k < d && hash(x * 31 + k * 17) < 0.06) c = left ? C.brown[0] : C.brown[1]; // pebbles
         if (k > d) c = C.brown[3];
         g.set(x, top + k, c);
       }
-    }
-    // the top: grass, furrowed soil under the crops
-    for (var y = ISO.y - ISO.b; y <= ISO.y + ISO.b; y++) {
-      for (var x2 = ISO.x; x2 <= ISO.x + 2 * ISO.a; x2++) {
-        var pq = unIso(x2 + 0.5, y + 0.5), p = pq[0], q = pq[1];
-        if (p < 0 || p > 1 || q < 0 || q > 1) continue;
-        var zone = plotZone(p, q), h = hash(x2 * 131 + y * 977), c2;
-        if (zone === 'veg' || zone === 'rice') {
-          var rows = zone === 'veg' ? VEG_ROWS : RICE_ROWS, near = 1;
-          rows.forEach(function (r) { near = Math.min(near, Math.abs(q - r)); });
-          c2 = near < 0.025 ? C.brown[2] : zone === 'rice' ? C.gold[2] : C.brown[1];
-        } else {
-          c2 = h < 0.1 ? C.green[0] : h > 0.94 ? C.green[2] : C.green[1];
-        }
-        g.set(x2, y, c2);
-      }
-    }
-    // a lit lip along the two front edges
-    for (var x3 = ISO.x + 1; x3 < ISO.x + 2 * ISO.a; x3++) {
-      var ty = x3 <= ISO.x + ISO.a ? ISO.y + (x3 - ISO.x) * 0.5 : ISO.y + ISO.b - (x3 - ISO.x - ISO.a) * 0.5;
-      g.set(x3, Math.ceil(ty), C.green[0]);
-    }
+    });
     g.outline(C.ink).paint(ctx);
   }
 
-  // a small field hut on stilts with a thatched roof, drawn in the same isometric view
+  // a small field hut on stilts with a thatched gable roof, in the same isometric view: the gable end with
+  // its door faces left into the light, the long wall is in the shade on the right
   function paintHut() {
-    var g = new Grid(), ox = 12, oy = 26; // the footprint's front corner inside the hut's own canvas
-    function at(u, v, h) { return [ox - 10 * u + 10 * v, oy - 5 * u - 5 * v - h]; }
+    var g = new Grid(), ox = 12, oy = 33; // the front corner of the footprint inside the hut's own canvas
+    function at(u, v, h) { return [ox - 9 * u + 16 * v, oy - 4.5 * u - 8 * v - h]; }
     var stilt = 3, wall = 11, ridge = 19;
-    // stilts
-    [[0, 0], [1, 0], [0, 1]].forEach(function (s) { var b = at(s[0], s[1], 0); g.rect(b[0], b[1] - stilt, 1, stilt + 1, C.brown[3]); });
-    // the long wall in the light and the gable wall in the shade, with a door
-    g.poly([at(0, 0, stilt), at(1, 0, stilt), at(1, 0, wall), at(0, 0, wall)], function (x, y) { return (x + y) % 5 === 0 ? C.brown[1] : C.brown[0]; });
-    g.poly([at(0, 0, stilt), at(0, 1, stilt), at(0, 1, wall), at(0, 0.5, ridge - 1), at(0, 0, wall)], C.brown[1]);
-    g.poly([at(0, 0.36, stilt), at(0, 0.64, stilt), at(0, 0.64, wall - 2), at(0, 0.36, wall - 2)], C.dark);
-    // the roof: the far slope's edge over the gable, then the near slope, thatch in rows along the ridge
-    g.poly([at(-0.15, 0.5, ridge), at(-0.15, 1.18, wall - 1), at(-0.05, 1.18, wall - 2), at(-0.05, 0.5, ridge - 1)], C.gold[2]);
-    g.poly([at(-0.15, -0.18, wall - 1), at(1.15, -0.18, wall - 1), at(1.15, 0.5, ridge), at(-0.15, 0.5, ridge)], function (x, y, nx, ny) {
-      return ny < -0.75 ? C.gold[0] : (y + Math.round(x / 2)) % 3 === 0 ? C.gold[2] : C.gold[1];
-    });
-    var cv = canvas(28, 34);
+    [[0, 0], [1, 0], [0, 1]].forEach(function (s) { var b = at(s[0], s[1], 0); g.rect(Math.round(b[0]), Math.round(b[1]) - stilt, 1, stilt + 1, C.brown[3]); });
+    // the long wall (shade) and the gable end (light) with its door
+    g.poly([at(0, 0, stilt), at(0, 1, stilt), at(0, 1, wall), at(0, 0, wall)], function (x) { return x % 3 === 0 ? C.brown[2] : C.brown[1]; });
+    g.poly([at(0, 0, stilt), at(1, 0, stilt), at(1, 0, wall), at(0.5, 0, ridge - 1), at(0, 0, wall)], function (x) { return x % 3 === 1 ? C.brown[1] : C.brown[0]; });
+    g.poly([at(0.3, 0, stilt), at(0.7, 0, stilt), at(0.7, 0, wall - 1), at(0.3, 0, wall - 1)], C.dark);
+    // thatch: the far slope, then the near slope over the long wall, a dark ridge between them
+    function thatch(cols) { return function (x, y) { return (y + Math.floor(x / 2)) % 3 === 0 ? cols[1] : cols[0]; }; }
+    g.poly([at(0.5, -0.12, ridge), at(0.5, 1.12, ridge), at(1.18, 1.12, wall - 1), at(1.18, -0.12, wall - 1)], thatch([C.gold[0], C.gold[1]]));
+    g.poly([at(-0.18, -0.12, wall - 1), at(-0.18, 1.12, wall - 1), at(0.5, 1.12, ridge), at(0.5, -0.12, ridge)], thatch([C.gold[1], C.gold[2]]));
+    g.line(at(0.5, -0.12, ridge)[0], at(0.5, -0.12, ridge)[1], at(0.5, 1.12, ridge)[0], at(0.5, 1.12, ridge)[1], C.gold[2]);
+    var cv = canvas(34, 38);
     g.outline(C.ink).paint(cv.getContext('2d'));
     return { img: cv, ox: ox, oy: oy };
   }
@@ -225,22 +225,26 @@
   }
 
   // crops, with a second frame leaning in the wind
-  var VEG = ['..lll..', '.llgll.', 'llgglgl', 'ggglggG', '.gGgGG.', '..GGG..'];
-  var RICE = ['.y..y.', 'yYyyYy', '.yYyy.', 'y.yYy.', '..yy..', '..Yg..', '..gG..'];
+  var VEG = ['..lll..', '.llglg.', 'lglgllg', 'gglgggG', 'GgggGGG', '.GGGGG.'];
+  var RICE = ['..yy..', '.yyYy.', 'yyYyYy', 'yY.yY.', '.Y.Y..', '..YG..', '..GG..'];
   function lean(rows, n) { return rows.map(function (r, i) { return i < n ? '.' + r.slice(0, -1) : r; }); }
-  var CROP_PAL = { l: C.green[0], g: C.green[1], G: C.green[2], y: C.gold[0], Y: C.gold[1] };
+  var CROP_PAL = { l: C.green[0], g: C.green[1], G: C.green[2], y: C.gold[0], Y: C.gold[2] };
 
   function plotThings() {
     var list = [];
     VEG_ROWS.forEach(function (q) {
-      for (var p = 0.1; p < 0.62; p += 0.085) list.push({ kind: 'veg', p: p, q: q });
+      for (var p = 0.1; p < 0.56; p += 0.1) list.push({ kind: 'veg', p: p, q: q });
     });
     RICE_ROWS.forEach(function (q) {
-      for (var p = 0.08; p < 0.93; p += 0.062) list.push({ kind: 'rice', p: p, q: q });
+      for (var p = 0.09; p < 0.93; p += 0.07) list.push({ kind: 'rice', p: p, q: q });
     });
-    list.push({ kind: 'hut', p: 0.86, q: 0.2 });
-    list.push({ kind: 'jar', p: 0.7, q: 0.4 });
-    list.forEach(function (o) { var s = iso(o.p, o.q); o.x = s[0]; o.y = s[1]; });
+    list.push({ kind: 'hut', p: 0.64, q: 0.33, depth: [0.78, 0.25] }); // its footprint runs to p 0.93 and back to q 0.17
+    list.push({ kind: 'jar', p: 0.8, q: 0.43 });
+    list.forEach(function (o) {
+      var s = iso(o.p, o.q);
+      o.x = s[0]; o.y = s[1];
+      o.sort = o.depth ? iso(o.depth[0], o.depth[1])[1] : o.y; // a big thing sorts by the middle of its footprint
+    });
     return list;
   }
 
@@ -260,7 +264,7 @@
   function drawPlot(ctx, t, L, dy, extra) {
     ctx.drawImage(L.plot, 0, dy);
     var things = extra ? L.things.concat(extra) : L.things;
-    things.slice().sort(function (a, b) { return a.y - b.y || a.x - b.x; }).forEach(function (o) {
+    things.slice().sort(function (a, b) { return a.sort - b.sort || a.x - b.x; }).forEach(function (o) {
       var x = Math.round(o.x), y = Math.round(o.y) + dy;
       var gust = !reduceMotion && Math.sin(t / 700 - (o.p + o.q) * 5) > 0.55 ? 1 : 0;
       if (o.kind === 'veg') ctx.drawImage(L.veg[gust], x - 3, y - 4);
@@ -270,7 +274,16 @@
     });
   }
 
-  function plotSky(ctx) { bands(ctx, [[0, C.sky[2]], [24, C.sky[1]], [62, C.sky[0]], [98, C.cream]], 0, H); }
+  function plotSky(ctx) { bands(ctx, [[0, C.sky[2]], [30, C.sky[1]], [78, C.sky[0]]], 0, H); }
+
+  // the sky, two clouds behind the plot, the plot bobbing slowly, one cloud drifting past in front
+  function drawFloating(ctx, t, L, extra) {
+    ctx.drawImage(L.sky, 0, 0);
+    drift(ctx, L.clouds[0], 8, 10, 0.004, t);
+    drift(ctx, L.clouds[1], 122, 30, 0.0028, t);
+    drawPlot(ctx, t, L, bob(t, 3600), extra);
+    drift(ctx, L.clouds[2], 54, 100, 0.006, t);
+  }
 
   var B = {
     build: function () {
@@ -278,13 +291,7 @@
       L.sky = canvas(W, H); plotSky(L.sky.getContext('2d'));
       return L;
     },
-    draw: function (ctx, t, L) {
-      ctx.drawImage(L.sky, 0, 0);
-      drift(ctx, L.clouds[0], 6, 10, 0.004, t);
-      drift(ctx, L.clouds[1], 120, 34, 0.0028, t);
-      drawPlot(ctx, t, L, bob(t, 3600));
-      drift(ctx, L.clouds[2], 70, 98, 0.006, t);
-    },
+    draw: function (ctx, t, L) { drawFloating(ctx, t, L); },
   };
 
   /* ---------- C: Lung Phan standing on the plot ---------- */
@@ -313,7 +320,7 @@
   ];
   var LUNG_SMALL_PAL = {
     y: LUNG.hat[0], Y: LUNG.hat[1], h: LUNG.hair, n: LUNG.skin[0], k: LUNG.eye, g: LUNG.shirt[1], G: LUNG.shirt[2],
-    C: LUNG.pants, b: C.brown[1], B: C.brown[2], 1: C.gold[0], 5: C.gold[1], 3: C.green[1], 4: C.green[2],
+    C: C.dark, b: C.brown[1], B: C.brown[2], 1: C.gold[0], 5: C.gold[1], 3: C.green[1], 4: C.green[2],
   };
 
   function outlined(img, c) {
@@ -330,33 +337,28 @@
     build: function () {
       var L = B.build();
       L.lung = outlined(sprite(LUNG_SMALL, LUNG_SMALL_PAL), C.ink);
-      var spot = iso(0.36, 0.51);
-      L.lungAt = { kind: 'lung', p: 0.36, q: 0.51, x: spot[0], y: spot[1], draw: function (ctx, x, y, t) {
-        var breathe = !reduceMotion && Math.floor(t / 900) % 2 ? 1 : 0;
-        ctx.drawImage(L.lung, x - 7, y - L.lung.height + 2 + breathe, L.lung.width, L.lung.height - breathe);
+      var spot = iso(0.36, 0.51), img = L.lung, waist = 17; // outlined rows above the legs
+      L.lungAt = { kind: 'lung', p: 0.36, q: 0.51, x: spot[0], y: spot[1], sort: spot[1], draw: function (ctx, x, y, t) {
+        // he breathes: everything above the legs sinks a pixel now and then
+        var breathe = !reduceMotion && Math.floor(t / 900) % 2 ? 1 : 0, top = y - img.height + 2;
+        ctx.drawImage(img, 0, waist, img.width, img.height - waist, x - 7, top + waist, img.width, img.height - waist);
+        ctx.drawImage(img, 0, 0, img.width, waist, x - 7, top + breathe, img.width, waist);
       } };
       return L;
     },
-    draw: function (ctx, t, L) {
-      ctx.drawImage(L.sky, 0, 0);
-      drift(ctx, L.clouds[0], 6, 10, 0.004, t);
-      drift(ctx, L.clouds[1], 120, 34, 0.0028, t);
-      drawPlot(ctx, t, L, bob(t, 3600), [L.lungAt]);
-      drift(ctx, L.clouds[2], 70, 98, 0.006, t);
-    },
+    draw: function (ctx, t, L) { drawFloating(ctx, t, L, [L.lungAt]); },
   };
 
   /* ---------- A: Lung Phan's portrait ---------- */
   function paintLung() {
     var hat = LUNG.hat, shirt = LUNG.shirt, skin = LUNG.skin, out = [];
-    // body: green shirt with an open collar and the gold patch from his coach portrait
+    // body: plain green shirt with an open collar
     var body = new Grid();
-    body.poly([[42, 121], [44, 84], [50, 74], [68, 67], [92, 67], [110, 74], [116, 84], [118, 121]], function (x, y, nx, ny) {
-      return nx < -0.62 ? shirt[0] : nx > 0.55 ? shirt[2] : shirt[1];
+    body.poly([[42, 121], [44, 84], [50, 74], [68, 67], [92, 67], [110, 74], [116, 84], [118, 121]], function (x, y, nx) {
+      return nx > 0.78 ? shirt[2] : shirt[1];
     });
     body.poly([[72, 66], [88, 66], [80, 76]], skin[1]);
     body.line(72, 67, 79, 76, shirt[2]); body.line(88, 67, 81, 76, shirt[2]);
-    body.rect(92, 77, 5, 4, hat[0]); body.rect(92, 80, 5, 1, hat[1]);
     out.push(body.outline(C.ink));
     // forearms reaching round to the basket
     var arms = new Grid();
@@ -409,10 +411,13 @@
   function paintBasket() {
     var out = [];
     var goods = new Grid();
-    // rice ears fanning out on the left
-    [[50, 74], [55, 71], [60, 70], [65, 72]].forEach(function (tip, i) {
-      goods.line(60, 92, tip[0], tip[1], C.gold[2]);
-      goods.ellipse(tip[0] + (i < 2 ? -1 : 1), tip[1] + 2, 2, 3.5, function (x, y) { return (x + y) % 2 ? C.gold[0] : C.gold[1]; });
+    // rice: a few stalks standing up on the left, their heavy golden heads drooping over
+    [[51, 77], [55, 73], [60, 71], [65, 73]].forEach(function (tip) {
+      goods.line(61, 92, tip[0], tip[1], C.gold[2]);
+      for (var k = 0; k < 6; k++) {
+        var gx = Math.round(tip[0] - k * 1.1), gy = Math.round(tip[1] + k * 0.8 + k * k * 0.16);
+        goods.rect(gx - 1, gy, 2, 2, function (x, y) { return y === gy ? C.gold[0] : C.gold[1]; });
+      }
     });
     // two corn cobs in their husks
     [[74, 79, -0.25], [84, 80, 0.2]].forEach(function (c) {
