@@ -173,6 +173,8 @@
     return {
       season: sid, stage: stage, weather: weather, plots: plots, selected: draft ? draft.i : null, sparkleAt: scene && scene.lastSparkle,
       night: sid === 'rain' && stage === 'harvest', // the rainy season ends at Ok Phansa: fire boats on the Mekong
+      // a season runs from morning (planting) through the day (care) to evening (harvest)
+      time: stage === 'plan' ? 'dawn' : stage === 'harvest' && sid !== 'rain' ? 'dusk' : 'day',
     };
   }
 
@@ -580,6 +582,7 @@
       : '<span>ยังไม่มีสถิติ เริ่มเล่นรอบแรกได้เลย</span>';
     titleScene.setView({
       season: 'cool',
+      time: 'dawn', // sunrise over the Mekong
       weather: null,
       ambientSparkles: true,
       plots: [{ use: 'rice', phase: 2 }, { use: 'corn', phase: 2 }, { use: 'shallot', phase: 2 }, { use: 'kale', phase: 2 }],

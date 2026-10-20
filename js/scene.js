@@ -26,6 +26,8 @@
     fog: ['#b9c6cb', '#c9d3d6', '#d8e0e2'],
     drought: ['#ee9c50', '#f3b874', '#f7d39b'],
     night: ['#28366e', '#33427c', '#43538c'], // darkened further by the night overlay
+    dawn: ['#5d5f9e', '#9b78b0', '#e597a8', '#f8b98f', '#ffdca0'],
+    dusk: ['#3e3570', '#6e4a8a', '#c25f7d', '#ef8a5a', '#ffbe6a'],
   };
   var PLANT_ORDER = [0, 8, 4, 11, 2, 6, 9, 1, 5, 10, 3, 7];
   var DIGITS = {
@@ -43,16 +45,43 @@
   function hash(n) { n = (n ^ 61) ^ (n >>> 16); n = n + (n << 3); n = n ^ (n >>> 4); n = Math.imul(n, 0x27d4eb2d); return ((n ^ (n >>> 15)) >>> 0) / 4294967296; }
 
   function drawSky(ctx, colors) {
-    rect(ctx, 0, 0, W, 11, colors[0]);
-    rect(ctx, 0, 11, W, 10, colors[1]);
-    rect(ctx, 0, 21, W, 13, colors[2]);
+    if (colors.length === 3) {
+      rect(ctx, 0, 0, W, 11, colors[0]);
+      rect(ctx, 0, 11, W, 10, colors[1]);
+      rect(ctx, 0, 21, W, 13, colors[2]);
+      return;
+    }
+    // sunrise and sunset skies: more bands, dithered where they meet
+    var top = 0;
+    colors.forEach(function (c, i) {
+      var bottom = Math.round(((i + 1) / colors.length) * 34);
+      rect(ctx, 0, top, W, bottom - top, c);
+      if (i > 0) for (var x = 0; x < W; x += 2) rect(ctx, x + (top % 2), top, 1, 1, colors[i - 1]);
+      top = bottom;
+    });
   }
 
-  function drawSun(ctx, x, y, big) {
-    var r = big ? 6 : 4;
+  function disc(ctx, x, y, r, c) {
     for (var dy = -r; dy <= r; dy++) {
       var hw = Math.round(Math.sqrt(r * r - dy * dy));
-      rect(ctx, x - hw, y + dy, hw * 2 + 1, 1, dy < -r / 2 ? '#fff1a8' : '#ffd84a');
+      rect(ctx, x - hw, y + dy, hw * 2 + 1, 1, c);
+    }
+  }
+
+  // a low sun at sunrise or sunset: bigger, with a soft glow around it
+  function drawLowSun(ctx, sun) {
+    ctx.globalAlpha = 0.14; disc(ctx, sun.x, sun.y, 14, sun.glow);
+    ctx.globalAlpha = 0.22; disc(ctx, sun.x, sun.y, 10, sun.glow);
+    ctx.globalAlpha = 1;
+    disc(ctx, sun.x, sun.y, 7, sun.colors[1]);
+    disc(ctx, sun.x, sun.y - 2, 4, sun.colors[0]);
+  }
+
+  function drawSun(ctx, x, y, big, colors) {
+    var r = big ? 6 : 4, c = colors || ['#fff1a8', '#ffd84a'];
+    for (var dy = -r; dy <= r; dy++) {
+      var hw = Math.round(Math.sqrt(r * r - dy * dy));
+      rect(ctx, x - hw, y + dy, hw * 2 + 1, 1, dy < -r / 2 ? c[0] : c[1]);
     }
     if (big) {
       ctx.globalAlpha = 0.35;
@@ -62,8 +91,8 @@
     }
   }
 
-  function drawCloud(ctx, x, y, dark) {
-    var c = dark ? '#8a979f' : '#ffffff', s = dark ? '#6f7c84' : '#dfeaf0';
+  function drawCloud(ctx, x, y, dark, tint) {
+    var c = tint ? tint[0] : dark ? '#8a979f' : '#ffffff', s = tint ? tint[1] : dark ? '#6f7c84' : '#dfeaf0';
     rect(ctx, x + 3, y, 8, 2, c);
     rect(ctx, x + 1, y + 2, 14, 2, c);
     rect(ctx, x, y + 4, 18, 2, c);
@@ -85,18 +114,26 @@
     return best;
   }
 
-  function drawMountains(ctx) {
+  // far peaks, near peaks, lit faces, tree line
+  var HILLS = {
+    day: ['#93a0c6', '#6f80ab', '#8796bd', '#3f6b4f'],
+    dawn: ['#a991bd', '#7a6aa2', '#d39ab4', '#3e5a55'],
+    dusk: ['#7c6095', '#4e4170', '#b0709a', '#2e3f3a'],
+  };
+
+  function drawMountains(ctx, time) {
+    var c = HILLS[time] || HILLS.day;
     for (var x = 0; x < W; x++) {
       var far = peakHeight(FAR_PEAKS, x);
-      if (far > 0) rect(ctx, x, 34 - far, 1, far, '#93a0c6');
+      if (far > 0) rect(ctx, x, 34 - far, 1, far, c[0]);
       var near = peakHeight(NEAR_PEAKS, x);
       if (near > 0) {
-        rect(ctx, x, 34 - near, 1, near, '#6f80ab');
-        if (peakHeight(NEAR_PEAKS, x - 1) < near) rect(ctx, x, 34 - near, 1, 2, '#8796bd'); // sunlit left faces
+        rect(ctx, x, 34 - near, 1, near, c[1]);
+        if (peakHeight(NEAR_PEAKS, x - 1) < near) rect(ctx, x, 34 - near, 1, 2, c[2]); // sunlit left faces
       }
       // tree line along the far bank
       var trees = 2 + Math.round(1.2 * Math.sin(x / 2.3) + Math.sin(x / 5.1));
-      rect(ctx, x, 34 - trees, 1, trees, '#3f6b4f');
+      rect(ctx, x, 34 - trees, 1, trees, c[3]);
     }
   }
 
@@ -400,7 +437,7 @@
   // a small flock of egrets crosses the sky now and then
   function drawBirds(ctx, t, view) {
     if (reduceMotion || view.weather === 'flood') return;
-    var p = (t % 26000) / 9000;
+    var p = (t % (view.time === 'dusk' ? 12000 : 26000)) / 9000;
     if (p >= 1) return;
     var flap = Math.floor(t / 180) % 2 ? 'egretUp' : 'egretDown';
     [[0, 0], [-7, 3], [-12, -2]].forEach(function (o, n) {
@@ -492,8 +529,43 @@
     ctx.globalAlpha = 1;
   }
 
+  /* ---------- sunrise and sunset ----------
+     In Nakhon Phanom the sun comes up over the Lao mountains across the Mekong (right) and goes
+     down behind the farm (left). Morning light is pink and soft; evening light is warm, the land
+     falls into shade and Phra That Phanom keeps the last gold. */
+  var SUN = {
+    dawn: { x: 151, y: 16, colors: ['#fff6d8', '#ffc76a'], glow: '#ffd59a', clouds: ['#f7c6c6', '#d99aa8'] },
+    dusk: { x: 61, y: 25, colors: ['#ffe2a0', '#ff8a3d'], glow: '#ff9a5a', clouds: ['#f0a08e', '#b86a7c'] },
+  };
+
+  function drawLight(ctx, t, view) {
+    var tt = reduceMotion ? 0 : t, r = RIVER[view.season] || RIVER.cool;
+    if (view.time === 'dawn') {
+      ctx.globalAlpha = 0.12;
+      rect(ctx, 0, 31, W, H - 31, '#ff9f8a');
+      // mist on the river and the sun's path on the water
+      ctx.globalAlpha = 0.35;
+      rect(ctx, riverEdge(36, r.shift), 35, W, 2, '#ffe6d6');
+      ctx.globalAlpha = 0.8;
+      for (var y = 34; y < 64; y += 2) {
+        var w = 1 + ((y + Math.floor(tt / 300)) % 3), x = SUN.dawn.x - Math.floor(w / 2) + Math.round(Math.sin(tt / 400 + y) * 1.2);
+        if (x > riverEdge(y, r.shift)) rect(ctx, x, y, w, 1, y < 46 ? '#fff0c0' : '#ffc76a');
+      }
+      ctx.globalAlpha = 1;
+    } else if (view.time === 'dusk') {
+      ctx.globalAlpha = 0.3;
+      rect(ctx, 0, 31, W, H - 31, '#50204a');
+      ctx.globalAlpha = 0.6;
+      THAT.forEach(function (row, y) {
+        for (var x = 0; x < row.length; x++) if (row[x] !== '.') rect(ctx, THAT_X + x, THAT_Y + y, 1, 1, THAT_PAL[row[x]]);
+      });
+      ctx.globalAlpha = 1;
+    }
+  }
+
   function skyFor(view) {
     if (view.night) return SKY.night;
+    if (SUN[view.time] && !view.weather) return SKY[view.time];
     if (view.weather === 'flood') return SKY.storm;
     if (view.weather === 'humid') return SKY.fog;
     if (view.weather === 'drought') return SKY.drought;
@@ -512,14 +584,16 @@
       var sky = skyFor(view);
       drawSky(ctx, sky);
       var stormy = view.weather === 'flood' || view.weather === 'rainLight' || view.weather === 'humid';
+      var low = !view.weather && SUN[view.time]; // sunrise or sunset
       if (!view.night) {
-        if (!stormy) drawSun(ctx, 112, 9, view.season === 'hot' || view.weather === 'drought');
+        if (low) drawLowSun(ctx, low);
+        else if (!stormy) drawSun(ctx, 112, 9, view.season === 'hot' || view.weather === 'drought');
         var drift = reduceMotion ? 0 : t / 260;
-        drawCloud(ctx, ((drift + 20) % (W + 40)) - 30, 4, stormy);
-        drawCloud(ctx, ((drift * 0.6 + 100) % (W + 40)) - 30, 12, stormy);
+        drawCloud(ctx, ((drift + 20) % (W + 40)) - 30, 4, stormy, low && low.clouds);
+        drawCloud(ctx, ((drift * 0.6 + 100) % (W + 40)) - 30, 12, stormy, low && low.clouds);
         if (view.weather === 'flood') drawCloud(ctx, ((drift * 0.8 + 60) % (W + 40)) - 30, 1, true);
       }
-      drawMountains(ctx);
+      drawMountains(ctx, low ? view.time : 'day');
       drawGround(ctx, view.season);
       drawThatPhanom(ctx, t, view, thatAt);
       drawRiver(ctx, t, view.season, view.night);
@@ -528,6 +602,7 @@
       view.plots.forEach(function (p, i) { drawPlot(ctx, i, p || {}, t, view); });
       drawLife(ctx, t, view);
       drawWeather(ctx, view, t);
+      if (low) drawLight(ctx, t, view);
       if (view.night) drawNight(ctx, t, view);
       else drawBirds(ctx, t, view);
       drawSparkles(ctx, view, t);
