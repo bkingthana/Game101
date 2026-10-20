@@ -981,7 +981,6 @@
     scene.onTap(function (i) { if (state && state.stage === 'plan') openPlot(i); });
     titleScene = MF.createCover($('title-canvas')); // the title has its own picture, not the farm
     scene.onThatPhanom(thatPhanom);
-    titleScene.onThatPhanom(thatPhanom);
     bind();
 
     // a live republish carries the open game over; an older version's game is dropped
