@@ -18,7 +18,7 @@
   var state = null;
   var screen = 'title';
   var scene = null, titleScene = null;
-  var draft = null; // plot sheet draft: { i, use, basal }
+  var draft = null; // plot sheet draft: { i, use, basal, prevent }
   var sheetKind = null, lastFocus = null;
   var coachQueue = [], coachLines = [], coachKey = null;
   var shownMoney = 0;
@@ -204,7 +204,8 @@
         '<span class="plot-main"><span class="plot-name">' + esc(info.name) + ' <small>' + esc(info.terrain) + '</small></span>' + npkMini(p.soil) +
         (p.lastUse ? '<span class="plot-last">ฤดูที่แล้ว: ' + esc(useName(p.lastUse)) + '</span>' : '') + '</span>' +
         '<span class="plot-pick">' + useIcon(p.use, 3) + '<span class="pick-text"><b>' + esc(useName(p.use)) + '</b>' +
-        (p.basal ? '<small>+ ' + esc(MF.FERTS[p.basal].name) + '</small>' : '') + '</span></span>' +
+        (p.basal ? '<small>+ ' + esc(MF.FERTS[p.basal].name) + '</small>' : '') +
+        (p.prevent && p.prevent.length ? '<small>+ ' + esc(p.prevent.map(function (id) { return MF.PREVENTIONS[id].short; }).join(', ')) + '</small>' : '') + '</span></span>' +
         '</button></li>';
     });
     html += '</ul>';
@@ -212,7 +213,7 @@
 
     var cost = E.planCost(state);
     var left = state.money - cost;
-    $('action-info').innerHTML = '<span>ค่าเมล็ดพันธุ์และปุ๋ย</span><b class="num big">' + fmt(cost) + '</b>' +
+    $('action-info').innerHTML = '<span>ค่าใช้จ่ายตอนปลูก</span><b class="num big">' + fmt(cost) + '</b>' +
       '<span class="' + (left < 0 ? 'neg' : '') + '">' + (left < 0 ? 'เงินไม่พอ' : 'เหลือ ' + fmt(left)) + '</span>';
     var btn = $('btn-primary');
     btn.textContent = 'เริ่มปลูก';
@@ -253,7 +254,8 @@
         '<div><span class="tag tag-' + e.type + '">' + esc(MF.EVENT_TYPES[e.type]) + '</span> <span class="event-where">' + plotNum(i) + esc(useName(x.p.use)) + '</span>' +
         '<h3>' + esc(e.name) + '</h3></div></header>' +
         '<p class="symptom"><b>อาการ</b> ' + esc(e.symptom) + '</p>' +
-        '<p class="risk">ถ้าปล่อยไว้ ผลผลิตอาจเสียหายราว ' + Math.round(e.loss * 100) + '%</p>' +
+        '<p class="risk">ถ้าปล่อยไว้ ผลผลิตอาจเสียหายราว ' + Math.round(e.loss * 100) + '%' +
+        (e.cure ? ' · ' + (e.soil ? 'เป็นโรคในดิน ' : 'เชื้อเข้าในต้นแล้ว ') + 'ใช้ยาถูกก็ยังเสียหายราว ' + Math.round(e.loss * (1 - e.cure) * 100) + '%' : '') + '</p>' +
         '<div class="shop-label">' + S.img('brand', 2) + '<span><b>ธนาพันธ์ ฟาร์มแคร์</b>เลือกยา 1 ชนิด</span></div><div class="options">';
       x.p.event.options.forEach(function (pid) {
         var pr = MF.PRODUCTS[pid];
@@ -426,8 +428,26 @@
         '<span class="sack">' + S.img('none', 3) + '</span><span class="fert-text"><b>ไม่ใส่ปุ๋ยรองพื้น</b><small>ใช้ธาตุอาหารที่มีในดินอย่างเดียว</small></span><span class="price num">0</span></button></div>';
     }
 
-    var thisCost = E.useCost(d.use) + (crop && d.basal ? MF.FERTS[d.basal].cost : 0);
-    var others = E.planCost(state) - (E.useCost(p.use) + (E.isCrop(p.use) && p.basal ? MF.FERTS[p.basal].cost : 0));
+    var prevents = E.preventionsFor(d.use);
+    if (prevents.length) {
+      var soilRisk = info.wet && crop.events.some(function (ev) { return MF.EVENTS[ev].soil; });
+      html += '<h3 class="sheet-sub">ป้องกันโรคตั้งแต่ปลูก <small>เลือกได้หลายอย่าง</small></h3>' +
+        (soilRisk ? '<p class="crop-note">แปลงนี้ดินชื้น โรคในดินเกิดง่ายกว่าแปลงอื่น</p>' : '') + '<div class="fert-list">';
+      prevents.forEach(function (id) {
+        var pv = MF.PREVENTIONS[id];
+        var cuts = crop.events.filter(function (ev) { return pv.prevents[ev]; }).map(function (ev) {
+          return MF.EVENTS[ev].name + ' ' + Math.round(pv.prevents[ev] * 100) + '%';
+        });
+        html += '<button class="fert" data-action="toggle-prevent" data-p="' + id + '" data-key="prevent-' + id + '" aria-pressed="' + (d.prevent.indexOf(id) >= 0) + '">' +
+          '<span class="sack">' + S.img(pv.icon, 3, { x: pv.color }) + '</span>' +
+          '<span class="fert-text"><b>' + esc(pv.name) + '</b><small>' + esc(pv.desc) + '</small><small class="timing">ลดโอกาสเกิด' + esc(cuts.join(', ')) + '</small></span>' +
+          '<span class="price num">' + fmt(pv.cost) + '</span></button>';
+      });
+      html += '</div>';
+    }
+
+    var thisCost = E.plotCost({ use: d.use, basal: d.basal, prevent: d.prevent });
+    var others = E.planCost(state) - E.plotCost(p);
     var over = others + thisCost > state.money;
     html += '<div class="sheet-foot"><div class="sheet-total"><span>ค่าใช้จ่ายแปลงนี้ (บาท)</span><b class="num big">' + fmt(thisCost) + '</b>' +
       (over ? '<span class="neg">เงินไม่พอ</span>' : '') + '</div>' +
@@ -438,7 +458,7 @@
   function openPlot(i) {
     if (state.stage !== 'plan') return;
     var p = state.plots[i];
-    draft = { i: i, use: p.use, basal: p.basal };
+    draft = { i: i, use: p.use, basal: p.basal, prevent: (p.prevent || []).slice() };
     sfx('tap');
     openSheet('plot', plotSheetHtml());
     updateScene();
@@ -481,6 +501,7 @@
       '<li>แปลงที่ลุ่มเสี่ยงน้ำท่วม แปลงที่ดอนเสี่ยงแล้ง แปลงริมโขงดินดี สูบน้ำได้ถูก แต่หน้าฝนน้ำโขงขึ้น</li>' +
       '<li>ผักกินใบที่ไม่ใช้ยาเคมี หรือใช้ชีวภัณฑ์ (เชื้อบีที ไตรโคเดอร์มา) ขายเป็นผักปลอดภัย ได้ราคาเพิ่ม ' + Math.round(MF.CONFIG.safeVegBonus * 100) + '%</li>' +
       '<li>ปลูกพืชเดิมซ้ำแปลงเดิม โรคและแมลงจะมากขึ้น ใส่ไนโตรเจนมากไปก็เช่นกัน</li>' +
+      '<li>โรคในดิน เช่น เน่าคอดิน รากเน่า รักษาตอนเป็นแล้วได้ผลไม่เต็มที่ คลุกเมล็ดหรือใส่ไตรโคเดอร์มาตั้งแต่ปลูกช่วยป้องกัน</li>' +
       '<li>ฤดูร้อนน้ำน้อย ทุกพืชได้ผลผลิตต่ำ แปลงริมโขงสูบน้ำได้ถูกกว่า</li>' +
       '</ul></div>';
   }
@@ -685,6 +706,7 @@
       case 'pick-use':
         draft.use = el.getAttribute('data-use');
         if (!MF.CROPS[draft.use]) draft.basal = null;
+        draft.prevent = draft.prevent.filter(function (id) { return E.preventionsFor(draft.use).indexOf(id) >= 0; });
         sfx('select');
         refreshSheet(plotSheetHtml());
         break;
@@ -693,8 +715,14 @@
         sfx('select');
         refreshSheet(plotSheetHtml());
         break;
+      case 'toggle-prevent':
+        var pv = el.getAttribute('data-p'), at = draft.prevent.indexOf(pv);
+        if (at >= 0) draft.prevent.splice(at, 1); else draft.prevent.push(pv);
+        sfx('select');
+        refreshSheet(plotSheetHtml());
+        break;
       case 'confirm-plot':
-        E.setPlan(state, draft.i, draft.use, draft.basal);
+        E.setPlan(state, draft.i, draft.use, draft.basal, draft.prevent);
         sfx(draft.use === 'idle' ? 'tap' : 'coin');
         saveGame();
         closeSheet();

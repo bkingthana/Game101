@@ -65,6 +65,14 @@ fs.mkdirSync(outDir, { recursive: true });
       await page.click('[data-action="pick-use"][data-use="' + plan[i] + '"]');
       if (plan[i] !== 'fallow') await page.click('[data-action="pick-basal"][data-f="f151515"]');
       if (season === 0 && i === 0) await shot('03-plot-sheet');
+      var prevent = await page.$('[data-action="toggle-prevent"]');
+      if (prevent) {
+        await prevent.click();
+        if (season === 0 && i === 1) {
+          await page.$eval('[data-action="toggle-prevent"]', function (el) { el.scrollIntoView({ block: 'center' }); });
+          await shot('03b-prevention');
+        }
+      }
       if (await page.isDisabled('[data-action="confirm-plot"]')) await page.click('[data-action="pick-use"][data-use="idle"]');
       await page.click('[data-action="confirm-plot"]');
       await page.waitForTimeout(80);

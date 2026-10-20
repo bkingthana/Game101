@@ -52,7 +52,12 @@ function expectedProfit(s, i, use) {
   return rev - crop.seedCost - 1000 - water - 180;
 }
 
-function planBest(s, crops) {
+// seed coating pays for itself; soil fungus control is worth it where the soil stays wet
+function expertPrevent(i, use) {
+  return E.preventionsFor(use).filter(function (id) { return id === 'seedcoat' || MF.PLOTS[i].wet; });
+}
+
+function planBest(s, crops, prevent) {
   var picks = s.plots.map(function (p, i) {
     var ranked = crops.map(function (u) { return { use: u, v: expectedProfit(s, i, u) }; })
       .sort(function (a, b) { return b.v - a.v; });
@@ -64,7 +69,7 @@ function planBest(s, crops) {
     for (var k = 0; k < pk.ranked.length; k++) {
       var c = pk.ranked[k];
       if (c.v < 200) break;
-      E.setPlan(s, pk.i, c.use, bestBasal(p, c.use));
+      E.setPlan(s, pk.i, c.use, bestBasal(p, c.use), prevent ? expertPrevent(pk.i, c.use) : []);
       if (E.planCost(s) <= s.money - 1500) return;
       E.setPlan(s, pk.i, 'idle', null);
     }
@@ -77,7 +82,7 @@ var GRAINS = ['rice', 'corn', 'shallot'];
 var strategies = {
   // picks the most profitable crop for each plot from every crop in the game
   expert: {
-    plan: function (s) { planBest(s, ALL_CROPS); },
+    plan: function (s) { planBest(s, ALL_CROPS, true); },
     care: function (s) {
       if (E.weatherResponse(s)) E.setResponse(s, true);
       s.plots.forEach(function (p, i) {
@@ -99,12 +104,12 @@ var strategies = {
   },
   // same skill, but only grows rice, corn and shallot (the game before vegetables)
   grains: {
-    plan: function (s) { planBest(s, GRAINS); },
+    plan: function (s) { planBest(s, GRAINS, true); },
     care: function (s) { strategies.expert.care(s); },
   },
-  // knows the seasons but sometimes picks the wrong chemical and skips top-dressing
+  // knows the seasons but sometimes picks the wrong chemical, skips top-dressing and never prevents
   decent: {
-    plan: function (s) { strategies.expert.plan(s); },
+    plan: function (s) { planBest(s, ALL_CROPS, false); },
     care: function (s) {
       strategies.expert.care(s);
       s.plots.forEach(function (p, i) {

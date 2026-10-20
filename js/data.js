@@ -125,14 +125,14 @@
     pymetrozine: { name: 'ไพมีโทรซีน', group: 'insect', cost: 450, desc: 'ยาเพลี้ย ทำให้แมลงปากดูดหยุดกิน' },
     imidacloprid: { name: 'อิมิดาโคลพริด', group: 'insect', cost: 350, desc: 'ยาดูดซึม กำจัดแมลงปากดูด เช่น เพลี้ยไฟ' },
     emamectin: { name: 'อีมาเมกตินเบนโซเอต', group: 'insect', cost: 500, desc: 'ยากำจัดหนอนผีเสื้อ เช่น หนอนกระทู้' },
-    bt: { name: 'เชื้อบีที (Bt)', group: 'bio', cost: 300, desc: 'ชีวภัณฑ์กำจัดหนอน ปลอดภัยต่อคนและแมลงที่มีประโยชน์' },
+    bt: { name: 'เชื้อบีที (Bt)', group: 'bio', cost: 300, desc: 'กำจัดหนอน ปลอดภัยต่อคนและแมลงที่มีประโยชน์' },
     cypermethrin: { name: 'ไซเปอร์เมทริน', group: 'insect', cost: 250, desc: 'ยาฆ่าแมลงแบบสัมผัส ออกฤทธิ์กว้าง ฆ่าแมลงดีไปด้วย' },
     spinetoram: { name: 'สไปนีโทแรม', group: 'insect', cost: 550, distractor: false, desc: 'ยาแมลงกลุ่มใหม่ ใช้กำจัดเพลี้ยไฟ' },
     abamectin: { name: 'อะบาเมกติน', group: 'insect', cost: 350, distractor: false, desc: 'ยากำจัดแมลงและไร ใช้กำจัดเพลี้ยไฟ' },
     fipronil: { name: 'ฟิโพรนิล', group: 'insect', cost: 400, distractor: false, desc: 'ยาแมลงแบบดูดซึม ใช้กำจัดเพลี้ยไฟ' },
     /* dill diseases, from BK's notes for Nakhon Phanom */
     carboxin: { name: 'คาร์บ็อกซิน', group: 'fungus', cost: 450, distractor: false, desc: 'ยากันราแบบดูดซึม ใช้กับโรคเน่าคอดินในระยะกล้า' },
-    trichoderma: { name: 'เชื้อราไตรโคเดอร์มา', group: 'bio', cost: 250, distractor: false, desc: 'ชีวภัณฑ์ เชื้อราดีช่วยป้องกันเชื้อโรคในดิน ได้ผลดีที่สุดเมื่อคลุกดินตั้งแต่เตรียมแปลง' },
+    trichoderma: { name: 'เชื้อราไตรโคเดอร์มา', group: 'bio', cost: 250, distractor: false, desc: 'เชื้อราดีช่วยป้องกันเชื้อโรคในดิน ได้ผลดีที่สุดเมื่อคลุกดินตั้งแต่เตรียมแปลง' },
     propineb: { name: 'โพรพิเนบ', group: 'fungus', cost: 300, distractor: false, desc: 'ยากันราแบบสัมผัส ฉีดเคลือบใบป้องกันโรคใบจุดก่อนฝนชุก' },
     azoxydifeno: { name: 'อะซอกซีสโตรบิน + ไดฟีโนโคนาโซล', group: 'fungus', cost: 650, distractor: false, desc: 'ยากันราสูตรผสมแบบดูดซึม ทั้งป้องกันและรักษาโรคใบจุด' },
     hexaconazole: { name: 'เฮกซะโคนาโซล', group: 'fungus', cost: 400, distractor: false, desc: 'ยากันราแบบดูดซึม ใช้กับโรคราแป้ง' },
@@ -155,7 +155,9 @@
      correct: products that work (90%). partial: {id: effectiveness}. harmful: {id: extra crop loss}.
      A product with distractor: false is only offered where an event lists it, never as a random wrong
      answer, because it may genuinely work on pests this table does not model it for.
-     notWrong: products that are never offered as a wrong answer for that one event, for the same reason. */
+     notWrong: products that are never offered as a wrong answer for that one event, for the same reason.
+     soil: soil-borne disease, more likely on wet plots. cure: how much the right product saves once the
+     disease shows (default 0.9); soil-borne diseases are better prevented at planting (MF.PREVENTIONS). */
   MF.EVENTS = {
     bph: {
       crop: 'rice', type: 'insect', sprite: 'bug', name: 'เพลี้ยกระโดดสีน้ำตาล',
@@ -184,8 +186,8 @@
     downy: {
       crop: 'corn', type: 'disease', sprite: 'leafDowny', name: 'โรคราน้ำค้างข้าวโพด',
       symptom: 'ใบเป็นทางสีเหลืองซีดยาวตามใบ ใต้ใบมีผงสีขาวตอนเช้า ต้นแคระแกร็น',
-      loss: 0.5, correct: ['metalaxyl'], partial: { mancozeb: 0.3 }, harmful: {},
-      tip: 'ราน้ำค้างระบาดตอนอากาศชื้น ใช้เมทาแลกซิล และควรคลุกเมล็ดพันธุ์ก่อนปลูก',
+      loss: 0.5, correct: ['metalaxyl'], partial: { mancozeb: 0.3 }, harmful: {}, cure: 0.7,
+      tip: 'ราน้ำค้างระบาดตอนอากาศชื้น เชื้อเข้าไปในต้นแล้วรักษาได้ไม่เต็มที่ ใช้เมทาแลกซิล และควรคลุกเมล็ดพันธุ์ก่อนปลูก',
     },
     cornweed: {
       crop: 'corn', type: 'weed', sprite: 'weed', name: 'วัชพืชในไร่ข้าวโพด',
@@ -244,7 +246,7 @@
     dampingoff: {
       crop: 'dill', type: 'disease', sprite: 'leafRot', name: 'โรคเน่าคอดิน',
       symptom: 'ต้นกล้ามีแผลช้ำสีน้ำตาลที่โคนต้นแล้วหักพับลง เกิดเมื่อดินชื้นมากและระบายน้ำไม่ดี',
-      loss: 0.45, correct: ['metalaxyl', 'carboxin'], partial: { trichoderma: 0.5 }, harmful: {},
+      loss: 0.45, correct: ['metalaxyl', 'carboxin'], partial: { trichoderma: 0.5 }, harmful: {}, soil: true, cure: 0.6,
       tip: 'โรคเน่าคอดินพบในระยะกล้า ใช้เมทาแลกซิลหรือคาร์บ็อกซินพ่นหรือราดโคนต้น ป้องกันระยะยาวด้วยการคลุกเมล็ดก่อนปลูก และผสมเชื้อราไตรโคเดอร์มากับดินขี้จอกตอนเตรียมแปลง',
     },
     leafspot: {
@@ -262,18 +264,33 @@
     rootrot: {
       crop: 'dill', type: 'disease', sprite: 'leafRot', name: 'โรครากเน่าโคนเน่า',
       symptom: 'ใบเหลืองจากใบล่างขึ้นมา โคนต้นช้ำสีน้ำตาลเข้ม รากเน่าเปื่อยหลุดง่าย เกิดในแปลงที่น้ำขังแฉะ',
-      loss: 0.45, correct: ['fosetyl', 'etridiazole', 'metalaxyl'], partial: { trichoderma: 0.5 }, harmful: {}, notWrong: ['mancozeb'],
+      loss: 0.45, correct: ['fosetyl', 'etridiazole', 'metalaxyl'], partial: { trichoderma: 0.5 }, harmful: {}, notWrong: ['mancozeb'], soil: true, cure: 0.6,
       tip: 'โรครากเน่าโคนเน่าเกิดในดินแฉะน้ำขัง ใช้ฟอสอีทิล-อะลูมิเนียมหรืออีทริไดอะโซล ยกร่องให้น้ำระบายดี และใช้ไตรโคเดอร์มาป้องกันเชื้อในดิน',
     },
   };
 
   /* Four plots with different soil and terrain. */
   MF.PLOTS = [
-    { name: 'แปลง 1', terrain: 'ที่ลุ่ม ดินเหนียว', note: 'อุ้มน้ำดี เสี่ยงน้ำท่วม', soil: { N: 50, P: 30, K: 45 }, droughtMult: 0.8, floodMult: 1.4, irrigateCost: 400 },
+    { name: 'แปลง 1', terrain: 'ที่ลุ่ม ดินเหนียว', wet: true, note: 'อุ้มน้ำดี เสี่ยงน้ำท่วม', soil: { N: 50, P: 30, K: 45 }, droughtMult: 0.8, floodMult: 1.4, irrigateCost: 400 },
     { name: 'แปลง 2', terrain: 'ที่ดอน ดินร่วนปนทราย', note: 'น้ำไม่ขัง แต่แห้งเร็ว', soil: { N: 35, P: 40, K: 30 }, droughtMult: 1.3, floodMult: 0.3, irrigateCost: 400 },
     { name: 'แปลง 3', terrain: 'ดินร่วน', note: 'ดินดี ปลูกได้หลากหลาย', soil: { N: 45, P: 40, K: 45 }, droughtMult: 1, floodMult: 1, irrigateCost: 400 },
-    { name: 'แปลง 4', terrain: 'ริมโขง ดินตะกอน', note: 'ดินตะกอนอุดมสมบูรณ์ สูบน้ำโขงได้ถูก แต่หน้าฝนน้ำโขงขึ้นท่วมพืชที่ไม่ทนน้ำ', soil: { N: 40, P: 35, K: 40 }, droughtMult: 0.3, floodMult: 1.5, irrigateCost: 150, riverRise: { rain: 0.4 } },
+    { name: 'แปลง 4', terrain: 'ริมโขง ดินตะกอน', wet: true, note: 'ดินตะกอนอุดมสมบูรณ์ สูบน้ำโขงได้ถูก แต่หน้าฝนน้ำโขงขึ้นท่วมพืชที่ไม่ทนน้ำ', soil: { N: 40, P: 35, K: 40 }, droughtMult: 0.3, floodMult: 1.5, irrigateCost: 150, riverRise: { rain: 0.4 } },
   ];
+
+  /* Bought at planting, they lower the chance of the listed diseases (share of the chance removed).
+     Shown only for crops that have one of those diseases. */
+  MF.PREVENTIONS = {
+    seedcoat: {
+      name: 'คลุกเมล็ดด้วยสารกันรา', short: 'คลุกเมล็ด', icon: 'bottle', cost: 100, color: '#2f74c9',
+      desc: 'คลุกเมล็ดพันธุ์ก่อนปลูก ป้องกันเชื้อราที่ทำลายต้นกล้า',
+      prevents: { dampingoff: 0.8, downy: 0.7 },
+    },
+    tricho: {
+      name: 'ไตรโคเดอร์มาผสมดินขี้จอก', short: 'ไตรโคเดอร์มา', icon: 'sack', cost: 250, color: '#2f9c8f',
+      desc: 'ผสมเชื้อราไตรโคเดอร์มากับดินขี้จอกตอนเตรียมแปลง ป้องกันเชื้อโรคในดินอย่างยั่งยืน',
+      prevents: { dampingoff: 0.6, rootrot: 0.6 },
+    },
+  };
 
   MF.NUTRIENT_NAMES = { N: 'ไนโตรเจน', P: 'ฟอสฟอรัส', K: 'โพแทสเซียม' };
   MF.NUTRIENT_FIX = { N: '46-0-0 หรือปอเทือง', P: '16-20-0', K: '0-0-60' };
@@ -301,6 +318,7 @@
     cool: [
       'ฤดูหนาวมาแล้ว หอมแดง คะน้า และผักชีลาวชอบอากาศเย็น ส่วนข้าวโพดก็ปลูกหลังนาได้',
       'ผักกินใบ ถ้าไม่ใช้ยาเคมี หรือใช้ชีวภัณฑ์ เช่น เชื้อบีที ไตรโคเดอร์มา จะขายเป็นผักปลอดภัย ได้ราคาเพิ่ม 15%',
+      'ผักชีลาวเป็นโรคในดินง่าย โดยเฉพาะแปลงที่ชื้น โรคพวกนี้รักษาตอนเป็นแล้วได้ผลไม่เต็มที่ คลุกเมล็ดหรือใส่ไตรโคเดอร์มาตั้งแต่ปลูกจะช่วยลดโอกาสเกิดโรค',
     ],
     hot: ['ฤดูร้อนเป็นฤดูสุดท้าย น้ำน้อย แดดจัด ทุกพืชได้ผลผลิตต่ำ ถ้าจะปลูก แปลงริมโขงสูบน้ำได้ถูกกว่า แปลงที่ไม่คุ้มก็ปล่อยว่างประหยัดทุนได้'],
   };

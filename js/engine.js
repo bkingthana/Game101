@@ -118,20 +118,40 @@
     state.seasonCost = 0;
     state.results = null;
     state.plots.forEach(function (p) {
-      p.use = 'idle'; p.basal = null; p.top = null; p.event = null;
+      p.use = 'idle'; p.basal = null; p.top = null; p.event = null; p.prevent = [];
     });
   }
 
-  function planCost(state) {
-    return state.plots.reduce(function (sum, p) {
-      return sum + useCost(p.use) + (isCrop(p.use) && p.basal ? MF.FERTS[p.basal].cost : 0);
-    }, 0);
+  /* disease prevention that makes sense for this crop */
+  function preventionsFor(use) {
+    var crop = MF.CROPS[use];
+    if (!crop) return [];
+    return Object.keys(MF.PREVENTIONS).filter(function (id) {
+      return crop.events.some(function (ev) { return MF.PREVENTIONS[id].prevents[ev]; });
+    });
   }
 
-  function setPlan(state, i, use, basal) {
+  function preventFactor(p, eventId) {
+    return (p.prevent || []).reduce(function (f, id) { return f * (1 - (MF.PREVENTIONS[id].prevents[eventId] || 0)); }, 1);
+  }
+
+  /* what planting one plot costs: seed, basal fertilizer and prevention */
+  function plotCost(p) {
+    if (!isCrop(p.use)) return useCost(p.use);
+    return useCost(p.use) + (p.basal ? MF.FERTS[p.basal].cost : 0) +
+      (p.prevent || []).reduce(function (s, id) { return s + MF.PREVENTIONS[id].cost; }, 0);
+  }
+
+  function planCost(state) {
+    return state.plots.reduce(function (sum, p) { return sum + plotCost(p); }, 0);
+  }
+
+  function setPlan(state, i, use, basal, prevent) {
     var p = state.plots[i];
+    var ok = preventionsFor(use);
     p.use = use;
     p.basal = isCrop(use) ? basal || null : null;
+    p.prevent = (prevent || []).filter(function (id) { return ok.indexOf(id) >= 0; });
   }
 
   /* Four products to choose from: up to two that work, every partial or harmful one, and at least
@@ -161,21 +181,27 @@
     state.stats.cost += cost;
 
     var w = state.weather.actual;
-    state.plots.forEach(function (p) {
+    state.plots.forEach(function (p, i) {
       p.event = null;
       if (!isCrop(p.use)) return;
       var crop = MF.CROPS[p.use];
+      var wetPlot = !!MF.PLOTS[i].wet;
       var excess = nutrientFactor(crop, available(p, false).total).excess;
       var repeat = p.lastUse === p.use;
       var chance = 0.38 + (w === 'humid' ? 0.15 : 0) + (w === 'flood' ? 0.08 : 0) + (excess ? 0.15 : 0) + (repeat ? 0.15 : 0);
-      if (rand(state) >= Math.min(0.85, chance)) return;
       var list = crop.events.map(function (id) {
         var e = MF.EVENTS[id], wt = 1;
         if (e.type === 'disease' && !e.dry && (w === 'humid' || w === 'flood')) wt += 1.5;
+        if (e.soil && wetPlot) wt += 1.5;
         if (e.type !== 'weed' && excess) wt += 0.7;
         if (e.dry && w === 'drought') wt += 1;
         return [id, wt];
       });
+      // prevention bought at planting removes part of the chance of the diseases it covers
+      var before = list.reduce(function (s, x) { return s + x[1]; }, 0);
+      list = list.map(function (x) { return [x[0], x[1] * preventFactor(p, x[0])]; });
+      var after = list.reduce(function (s, x) { return s + x[1]; }, 0);
+      if (rand(state) >= Math.min(0.85, chance) * (after / before)) return;
       var id = pickWeighted(state, list);
       p.event = { id: id, options: eventOptions(state, id), choice: null };
     });
@@ -214,7 +240,7 @@
   function treatmentOutcome(ev) {
     var e = MF.EVENTS[ev.id];
     var c = ev.choice || 'none';
-    if (e.correct.indexOf(c) >= 0) return { outcome: 'correct', loss: e.loss * 0.1 };
+    if (e.correct.indexOf(c) >= 0) return { outcome: 'correct', loss: e.loss * (1 - (e.cure || 0.9)) };
     if (c in e.partial) return { outcome: 'partial', loss: e.loss * (1 - e.partial[c]) };
     if (c in e.harmful) return { outcome: 'harmful', loss: e.loss + e.harmful[c] };
     return { outcome: c === 'none' ? 'none' : 'wrong', loss: e.loss };
@@ -283,13 +309,15 @@
       var e = MF.EVENTS[f.eventId];
       var prod = p.event.choice && p.event.choice !== 'none' ? MF.PRODUCTS[p.event.choice].name : '';
       var o = f.pest.outcome;
-      if (o === 'correct') tips.push({ tone: 'good', text: 'ใช้' + prod + 'ถูกต้อง หยุด' + e.name + 'ได้ทัน' });
+      if (o === 'correct' && e.cure) tips.push({ tone: 'bad', text: 'ใช้' + prod + 'ถูกต้อง แต่' + e.name + 'รักษาตอนเป็นแล้วได้ผลไม่เต็มที่ เสียหาย ' + pct(f.pest.loss) });
+      else if (o === 'correct') tips.push({ tone: 'good', text: 'ใช้' + prod + 'ถูกต้อง หยุด' + e.name + 'ได้ทัน' });
       else if (o === 'partial') tips.push({ tone: 'bad', text: prod + 'ได้ผลไม่เต็มที่ เสียหาย ' + pct(f.pest.loss) + ' · ' + e.tip });
       else if (o === 'harmful') tips.push({ tone: 'bad', text: prod + 'ทำให้แย่ลง เสียหาย ' + pct(f.pest.loss) + ' · ' + e.tip });
       else if (o === 'wrong') tips.push({ tone: 'bad', text: prod + 'ไม่ได้ผลกับ' + e.name + ' เสียหาย ' + pct(f.pest.loss) + ' · ' + e.tip });
       else tips.push({ tone: 'bad', text: 'ปล่อย' + e.name + 'ไว้ เสียหาย ' + pct(f.pest.loss) + ' · ' + e.tip });
       if (p.lastUse === p.use) tips.push({ tone: 'bad', text: 'ปลูก' + crop.name + 'ซ้ำแปลงเดิม โรคและแมลงสะสม ลองปลูกสลับพืช' });
     }
+    tips = tips.concat(preventionTips(p, crop));
     if (f.suit < 0.8) tips.push({ tone: 'bad', text: crop.name + 'ไม่เหมาะกับ' + season.name + ' ได้ผลผลิตแค่ ' + pct(f.suit) });
     if (f.weatherLoss > 0.04) {
       if (respond) tips.push({ tone: 'good', text: (w === 'drought' ? 'สูบน้ำ' : 'ระบายน้ำ') + 'ทัน ความเสียหายเหลือแค่ ' + pct(f.weatherLoss) });
@@ -307,6 +335,25 @@
     if (f.excess) tips.push({ tone: 'bad', text: 'ใส่ไนโตรเจนมากเกินไป ต้นอ่อนแอ ล้มง่าย แมลงชอบ' });
     if (!tips.some(function (t) { return t.tone === 'bad'; })) tips.unshift({ tone: 'good', text: 'ดูแลได้ดีมาก ' + crop.name + 'งามเต็มแปลง' });
     return tips;
+  }
+
+  function preventionTips(p, crop) {
+    var bought = p.prevent || [];
+    var ev = p.event && p.event.id;
+    var covering = function (ids) { return ids.filter(function (id) { return ev && MF.PREVENTIONS[id].prevents[ev]; }); };
+    if (ev && covering(bought).length) {
+      return [{ tone: 'bad', text: 'ป้องกันไว้แล้วแต่ยังเกิด' + MF.EVENTS[ev].name + ' การป้องกันลดโอกาสเกิด แต่ไม่ได้ทำให้เป็นศูนย์' }];
+    }
+    var missed = covering(preventionsFor(p.use));
+    if (missed.length) {
+      var pv = MF.PREVENTIONS[missed[0]];
+      return [{ tone: 'bad', text: 'ครั้งหน้าลอง' + pv.name + 'ตั้งแต่ปลูก ลดโอกาสเกิด' + MF.EVENTS[ev].name + ' ' + pct(pv.prevents[ev]) }];
+    }
+    if (!bought.length) return [];
+    var kept = crop.events.filter(function (id) {
+      return bought.some(function (b) { return MF.PREVENTIONS[b].prevents[id]; });
+    }).map(function (id) { return MF.EVENTS[id].name; });
+    return [{ tone: 'good', text: 'ป้องกันไว้ตั้งแต่ปลูก ฤดูนี้ไม่เกิด' + kept.join(' และ') }];
   }
 
   function harvest(state) {
@@ -359,6 +406,8 @@
     available: available,
     nutrientFactor: nutrientFactor,
     planCost: planCost,
+    plotCost: plotCost,
+    preventionsFor: preventionsFor,
     eventOptions: eventOptions,
     setPlan: setPlan,
     startGrowing: startGrowing,
