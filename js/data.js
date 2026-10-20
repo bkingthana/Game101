@@ -109,7 +109,7 @@
   };
 
   MF.LAND_USES = {
-    fallow: { name: 'พักดิน หว่านปอเทือง', cost: 300, add: { N: 22, P: 4, K: 6 }, note: 'ไถกลบเป็นปุ๋ยพืชสด เพิ่มไนโตรเจนให้ดิน' },
+    fallow: { name: 'พักดิน หว่านปอเทือง', cost: 300, add: { N: 22, P: 4, K: 6 }, acidCut: 1, note: 'ไถกลบเป็นปุ๋ยพืชสด เพิ่มไนโตรเจนให้ดิน และช่วยลดดินเปรี้ยวได้เล็กน้อย' },
     idle: { name: 'ปล่อยว่าง', cost: 0, note: 'ไม่ปลูกอะไร ดินฟื้นตัวเองเล็กน้อย' },
   };
 
@@ -119,23 +119,49 @@
      (21 x 30/46), so a baht buys less N with it than with urea, as at real prices.
      cost: game price per bag. The ratios between formulas follow 2015-2024 average world raw-material
      prices (urea, ammonium sulfate, DAP, potassium chloride) mixed into each formula, plus handling, then one
-     scale factor for every bag. Organic follows a typical Thai retail price brought to the same scale.
+     scale factor for every bag. 15-15-15 instead follows the average Thai retail price against urea (x 1.13),
+     as BK asked. Organic follows a typical Thai retail price brought to the same scale.
      README ("ราคาปุ๋ยในเกม") has the method. These are not shop prices.
-     tip: a note for the harvest summary of the first plot that used it in a season. */
+     tag/desc say which nutrient gap a formula fills: choose by what the soil is short of, not by crop.
+     tip: a note for the harvest summary of the first plot that used it in a season.
+     acidify: soil acidity added in a season it is used (MF.ACIDITY). acidCut: acidity it removes after the season. */
   MF.FERTS = {
-    f16200: { name: '16-20-0', tag: 'ปุ๋ยรองพื้น', desc: 'เร่งราก ตั้งตัวเร็ว นิยมใช้ในนาข้าว', cost: 450, add: { N: 12, P: 16, K: 0 }, best: 'basal', color: '#c9412f' },
-    f30200: { name: '30-20-0', tag: 'รองพื้น N P สูง', desc: 'ไนโตรเจนและฟอสฟอรัสเข้มข้น ไม่มี K เหมาะกับดินที่โพแทสเซียมพอแล้ว', cost: 560, add: { N: 24, P: 16, K: 0 }, best: 'basal', color: '#1f8fa8' },
-    f151515: { name: '15-15-15', tag: 'ปุ๋ยสูตรเสมอ', desc: 'บำรุงครบทั้ง N P K ใช้ได้ทุกช่วง', cost: 500, add: { N: 12, P: 12, K: 12 }, best: 'any', color: '#2f74c9' },
-    f2088: { name: '20-8-8', tag: 'เน้นไนโตรเจน', desc: 'มี P K เล็กน้อย นิยมใช้ในนาข้าว ใส่ได้ทั้งรองพื้นและแต่งหน้า', cost: 430, add: { N: 16, P: 6, K: 6 }, best: 'any', color: '#9c8f1a' },
-    organic: { name: 'อินทรีย์', tag: 'ปุ๋ยมูลไก่อัดเม็ด', desc: 'ธาตุอาหารน้อย แต่ช่วยให้ดินร่วนซุย ดินเสื่อมช้าลง', cost: 290, add: { N: 6, P: 6, K: 6 }, best: 'basal', soilCare: true, color: '#7a5230' },
-    f4600: { name: '46-0-0', tag: 'ยูเรีย', desc: 'เร่งต้น เร่งใบเขียว ใส่ตอนพืชกำลังโต', cost: 490, add: { N: 30, P: 0, K: 0 }, best: 'top', color: '#2f8f45' },
+    f16200: { name: '16-20-0', tag: 'เน้นฟอสฟอรัส', desc: 'ใช้เมื่อดินขาด P เป็นหลัก ขาด N เล็กน้อย และ K พอแล้ว ช่วยเร่งราก', cost: 450, add: { N: 12, P: 16, K: 0 }, best: 'basal', color: '#c9412f' },
+    f30200: { name: '30-20-0', tag: 'N และ P สูง', desc: 'ใช้เมื่อดินขาดทั้ง N และ P แต่ K พอแล้ว', cost: 560, add: { N: 24, P: 16, K: 0 }, best: 'basal', color: '#1f8fa8' },
+    f151515: { name: '15-15-15', tag: 'ปุ๋ยสูตรเสมอ', desc: 'ใช้เมื่อดินขาด N P K พอๆ กัน ใส่ได้ทุกช่วง', cost: 550, add: { N: 12, P: 12, K: 12 }, best: 'any', color: '#2f74c9' },
+    f2088: { name: '20-8-8', tag: 'เน้นไนโตรเจน', desc: 'ใช้เมื่อดินขาด N เป็นหลัก และขาด P K เล็กน้อย ใส่ได้ทุกช่วง', cost: 430, add: { N: 16, P: 6, K: 6 }, best: 'any', color: '#9c8f1a' },
+    organic: { name: 'อินทรีย์', tag: 'ปุ๋ยมูลไก่อัดเม็ด', desc: 'ธาตุอาหารน้อย แต่ดินร่วนซุย เสื่อมช้าลง และช่วยลดดินเปรี้ยวได้เล็กน้อย', cost: 290, add: { N: 6, P: 6, K: 6 }, best: 'basal', soilCare: true, acidCut: 1, color: '#7a5230' },
+    f4600: { name: '46-0-0', tag: 'ยูเรีย', desc: 'ใช้เมื่อดินขาด N มาก เงินเท่ากันได้ N มากที่สุด ใส่ตอนพืชกำลังโต', cost: 490, add: { N: 30, P: 0, K: 0 }, best: 'top', color: '#2f8f45' },
     f2100: {
-      name: '21-0-0', tag: 'แอมโมเนียมซัลเฟต', desc: 'ถุงถูกกว่ายูเรียเกือบครึ่ง แต่ไนโตรเจนไม่ถึงครึ่ง เหมาะตอนขาด N ไม่มาก ได้กำมะถันด้วย',
-      cost: 260, add: { N: 14, P: 0, K: 0 }, best: 'top', color: '#717a86',
-      tip: '21-0-0 ให้กำมะถันด้วย แต่ถ้าใช้ติดต่อกันหลายฤดู ดินจะเปรี้ยว ควรตรวจค่าความเป็นกรดของดินเป็นระยะ',
+      name: '21-0-0', tag: 'แอมโมเนียมซัลเฟต', desc: 'ใช้เมื่อดินขาด N ไม่มาก ถุงถูกกว่ายูเรียเกือบครึ่ง แต่ N ไม่ถึงครึ่ง ใส่ติดกัน 2 ฤดูดินจะเปรี้ยว',
+      cost: 260, add: { N: 14, P: 0, K: 0 }, best: 'top', acidify: 2, color: '#717a86',
+      tip: '21-0-0 ให้กำมะถันด้วย แต่ทำให้ดินเปรี้ยวขึ้นทุกฤดูที่ใส่ ใส่ติดกัน 2 ฤดู พืชจะใช้ฟอสฟอรัสได้น้อยลงและผลผลิตลด สลับไปใช้ยูเรีย หรือใส่ปูนโดโลไมท์ตอนปลูก',
     },
-    f2577: { name: '25-7-7', tag: 'ปุ๋ยเร่งต้น', desc: 'ไนโตรเจนสูง มี P K เล็กน้อย เร่งต้น เร่งใบ ใส่ช่วงพืชกำลังโต', cost: 460, add: { N: 20, P: 5, K: 5 }, best: 'top', color: '#c2417f' },
-    f0060: { name: '0-0-60', tag: 'โพแทสเซียม', desc: 'เพิ่มน้ำหนักเมล็ด หัวใหญ่ ใส่ช่วงสร้างผลผลิต', cost: 520, add: { N: 0, P: 0, K: 30 }, best: 'top', color: '#d07d18' },
+    f2577: { name: '25-7-7', tag: 'N สูง มี P K', desc: 'ใช้เมื่อดินขาด N และขาด P K นิดหน่อย ใส่ช่วงพืชกำลังโต', cost: 460, add: { N: 20, P: 5, K: 5 }, best: 'top', color: '#c2417f' },
+    f0060: { name: '0-0-60', tag: 'โพแทสเซียม', desc: 'ใช้เมื่อดินขาด K ช่วยให้เมล็ดหนัก หัวใหญ่ ใส่ช่วงสร้างผลผลิต', cost: 520, add: { N: 0, P: 0, K: 30 }, best: 'top', color: '#d07d18' },
+  };
+
+  /* Soil acidity, per plot (0 = normal). Each season a plot gets a fertilizer with acidify (21-0-0) it rises by
+     that much, and that harvest already uses the new level. Dolomite bought at planting lowers it before the crop
+     grows; organic fertilizer and the ปอเทือง fallow lower it a little after the season (acidCut).
+     From `sour` up the soil is acid (pH low): the crop can use only part of the P in the soil and fertilizer
+     (pUse, P is locked up by iron and aluminium) and loses some yield (loss). */
+  MF.ACIDITY = {
+    sour: 4,
+    max: 8,
+    levels: [
+      { from: 4, pUse: 0.7, loss: 0.05 },
+      { from: 6, pUse: 0.55, loss: 0.08 },
+    ],
+  };
+
+  /* Soil fixes bought at planting, one bag per plot, for crops and the fallow. Offered once a plot's soil has
+     started to turn acid. Dolomite cost: Thai retail per 50 kg / retail markup 1.152 x game scale 0.7102. */
+  MF.AMENDMENTS = {
+    dolomite: {
+      name: 'ปูนโดโลไมท์', short: 'โดโลไมท์', icon: 'sack', cost: 130, color: '#b9a88a', acidCut: 6,
+      desc: 'แก้ดินเปรี้ยว และเพิ่มแคลเซียมกับแมกนีเซียมให้ดิน หว่านตอนเตรียมแปลงก่อนปลูก',
+    },
   };
 
   MF.PRODUCT_GROUPS = {
@@ -317,7 +343,16 @@
   };
 
   MF.NUTRIENT_NAMES = { N: 'ไนโตรเจน', P: 'ฟอสฟอรัส', K: 'โพแทสเซียม' };
-  MF.NUTRIENT_FIX = { N: '46-0-0 ถ้าขาดไม่มากใช้ 21-0-0 ก็พอ หรือปลูกปอเทือง', P: '16-20-0 หรือ 30-20-0', K: '0-0-60' };
+  /* what to use for the nutrients a harvest came up short of; the key lists the short ones in N P K order */
+  MF.NUTRIENT_FIX = {
+    N: '46-0-0 ถ้าขาดไม่มาก 21-0-0 ก็พอ หรือปลูกปอเทือง',
+    P: '16-20-0',
+    K: '0-0-60',
+    NP: '30-20-0 ที่ให้ทั้ง N และ P',
+    NK: '20-8-8 หรือ 25-7-7 ถ้าขาด K มากใช้ 0-0-60 คู่กับ 46-0-0',
+    PK: '15-15-15 หรือ 16-20-0 คู่กับ 0-0-60',
+    NPK: '15-15-15 แล้วแต่งหน้าเพิ่มตามธาตุที่ยังขาด',
+  };
 
   function money(n) { return n.toLocaleString('en-US'); }
 
