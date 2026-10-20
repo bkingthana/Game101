@@ -81,8 +81,8 @@
 
   // the full-color logo; when the game is opened as a local file that image would block saving the
   // picture, so the pixel emblem stands in
-  function logo(ctx, x, y, w) {
-    var img = document.getElementById('brand-img-color');
+  function logo(ctx, x, y, w, onDark) {
+    var img = document.getElementById(onDark ? 'brand-img' : 'brand-img-color');
     if (img && img.complete && img.naturalWidth && !/^file:/.test(img.src)) {
       var h = Math.round((w * img.naturalHeight) / img.naturalWidth);
       ctx.imageSmoothingEnabled = true;
@@ -112,6 +112,21 @@
       ctx.lineTo(W, H);
       ctx.closePath();
       ctx.fillStyle = f[0];
+      ctx.fill();
+    });
+  }
+
+  // a dark header band whose lower edge shows the logo's fields: green, gold and brown peeking out
+  function headerBand(ctx, W, h) {
+    [[C.brown, 30], [C.gold, 20], [C.green, 10], ['#2F2F2F', 0]].forEach(function (l) {
+      var y = h + l[1];
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(W, 0);
+      ctx.lineTo(W, y - 16);
+      ctx.bezierCurveTo(W * 0.68, y + 22, W * 0.32, y - 24, 0, y + 8);
+      ctx.closePath();
+      ctx.fillStyle = l[0];
       ctx.fill();
     });
   }
@@ -241,7 +256,8 @@
      A pixel view from the Thai bank: Phra That Phanom, the Thanapun Farmcare signboard, the Mekong
      and the Lao mountains. The time of day follows the rank: a morning mist for a first try, sunrise,
      bright day, and the Ok Phansa night with a fire boat for the top rank. */
-  var PW = 120, PH = 58, PS = 9; // drawn small, scaled up 9x
+  var PW = 120, PH = 85, PS = 9; // drawn small, scaled up 9x; fills the card down to the emblem's ribbon
+  var HORIZON = 57, BANK = 71;
   var THAT_BIG = [
     '.........y.........', '.........y.........', '.........y.........', '.........y.........',
     '........yyY........', '........yyY........', '........yyY........', '.......yyyYY.......',
@@ -261,9 +277,9 @@
   var NEAR = [[18, 4, 8], [40, 5, 10], [60, 3, 7], [82, 5, 9], [104, 4, 8]];
   var PANO = {
     3: { sky: ['#11173a', '#1a2150', '#262c62', '#3a3670', '#56427a'], far: '#3a3f6e', near: '#2b2e57', trees: '#1b2630', water: '#18264a', light: '#ffcf6a', bank: '#1f2c35', night: true },
-    2: { sky: ['#4fa6e6', '#68b6ee', '#82c5f2', '#a0d4f5', '#c2e4f8'], far: '#93a0c6', near: '#6f80ab', trees: '#3f6b4f', water: '#5b93a6', light: '#c9eaf2', bank: '#5aa846', sun: [100, 8, 5, '#fff1a8', '#ffd84a'], clouds: true },
-    1: { sky: ['#5d5f9e', '#9b78b0', '#e597a8', '#f8b98f', '#ffdca0'], far: '#a991bd', near: '#7a6aa2', trees: '#3e5a55', water: '#8f8fb4', light: '#ffd59a', bank: '#6a9f48', sun: [97, 25, 7, '#fff6d8', '#ffb35a'], path: true },
-    0: { sky: ['#b9dfe4', '#c9e7e3', '#d9eee0', '#e7f3da', '#f2f7da'], far: '#a8c3c8', near: '#86a8ae', trees: '#4f7a5a', water: '#86b8c2', light: '#eef8f5', bank: '#78bb58', sun: [86, 14, 4, '#fffbe6', '#fff0b8'], mist: true },
+    2: { sky: ['#4fa6e6', '#68b6ee', '#82c5f2', '#a0d4f5', '#c2e4f8'], far: '#93a0c6', near: '#6f80ab', trees: '#3f6b4f', water: '#5b93a6', light: '#c9eaf2', bank: '#5aa846', sun: [100, 36, 5, '#fff1a8', '#ffd84a'], clouds: true },
+    1: { sky: ['#5d5f9e', '#9b78b0', '#e597a8', '#f8b98f', '#ffdca0'], far: '#a991bd', near: '#7a6aa2', trees: '#3e5a55', water: '#8f8fb4', light: '#ffd59a', bank: '#6a9f48', sun: [97, 46, 7, '#fff6d8', '#ffb35a'], path: true },
+    0: { sky: ['#b9dfe4', '#c9e7e3', '#d9eee0', '#e7f3da', '#f2f7da'], far: '#a8c3c8', near: '#86a8ae', trees: '#4f7a5a', water: '#86b8c2', light: '#eef8f5', bank: '#78bb58', sun: [86, 40, 4, '#fffbe6', '#fff0b8'], mist: true },
     bankrupt: { sky: ['#7f868c', '#8d9399', '#9ba1a6', '#a9aeb2', '#b7bbbe'], far: '#9aa0a5', near: '#83898f', trees: '#56635b', water: '#78838a', light: '#c3cacd', bank: '#71865f', rain: true },
   };
   var THAT_DAY = { w: '#f6f2e4', W: '#cdc5ad', y: '#ecbb32', Y: '#b8861c' };
@@ -289,7 +305,7 @@
   function panorama(tier) {
     var p = PANO[tier], cv = document.createElement('canvas');
     cv.width = PW; cv.height = PH;
-    var c = cv.getContext('2d'), horizon = 30, bankTop = 44;
+    var c = cv.getContext('2d'), horizon = HORIZON, bankTop = BANK;
     // sky in dithered bands
     p.sky.forEach(function (col, i) {
       var top = Math.round((i / p.sky.length) * horizon), bottom = Math.round(((i + 1) / p.sky.length) * horizon);
@@ -297,20 +313,20 @@
       if (i) for (var x = top % 2; x < PW; x += 2) px(c, x, top, 1, 1, p.sky[i - 1]);
     });
     if (p.night) {
-      for (var s = 0; s < 30; s++) px(c, Math.floor(hash(s * 7 + 3) * PW), Math.floor(hash(s * 11 + 1) * 18), 1, 1, s % 4 ? '#e8ecff' : '#fff3c4');
-      for (var dy = -4; dy <= 4; dy++) { var hw = Math.round(Math.sqrt(16 - dy * dy)); px(c, 100 - hw, 8 + dy, hw * 2 + 1, 1, '#fff3c9'); }
+      for (var s = 0; s < 48; s++) px(c, Math.floor(hash(s * 7 + 3) * PW), Math.floor(hash(s * 11 + 1) * 44), 1, 1, s % 4 ? '#e8ecff' : '#fff3c4');
+      for (var dy = -4; dy <= 4; dy++) { var hw = Math.round(Math.sqrt(16 - dy * dy)); px(c, 100 - hw, 34 + dy, hw * 2 + 1, 1, '#fff3c9'); }
     }
     if (p.sun) {
       var su = p.sun;
       for (var sy = -su[2]; sy <= su[2]; sy++) { var sw = Math.round(Math.sqrt(su[2] * su[2] - sy * sy)); px(c, su[0] - sw, su[1] + sy, sw * 2 + 1, 1, sy < -su[2] / 2 ? su[3] : su[4]); }
     }
     if (p.clouds) {
-      [[26, 5], [64, 11]].forEach(function (cl) {
+      [[26, 32], [64, 40]].forEach(function (cl) {
         px(c, cl[0] + 3, cl[1], 6, 1, '#ffffff'); px(c, cl[0] + 1, cl[1] + 1, 11, 1, '#ffffff');
         px(c, cl[0], cl[1] + 2, 14, 1, '#ffffff'); px(c, cl[0] + 1, cl[1] + 3, 12, 1, '#dfeaf0');
       });
     }
-    if (p.rain) { px(c, 6, 4, 30, 4, '#6f767c'); px(c, 10, 2, 18, 2, '#6f767c'); px(c, 70, 6, 34, 4, '#6f767c'); px(c, 76, 4, 20, 2, '#6f767c'); }
+    if (p.rain) { px(c, 6, 32, 30, 4, '#6f767c'); px(c, 10, 30, 18, 2, '#6f767c'); px(c, 70, 34, 34, 4, '#6f767c'); px(c, 76, 32, 20, 2, '#6f767c'); }
     // Lao mountains and the far bank
     for (var x2 = 0; x2 < PW; x2++) {
       var f = peak(FAR, x2), n = peak(NEAR, x2);
@@ -333,7 +349,8 @@
       for (var b = 1; b < 14; b += 2) px(c, 84 + b, bankTop - 1, 1, 1, '#ffb347');
       for (var l = 0; l < 10; l++) px(c, 4 + Math.floor(hash(l * 31) * 110), horizon + 2 + Math.floor(hash(l * 17) * 10), 1, 1, l % 2 ? '#ffcf4a' : '#ff8a2a');
     } else {
-      px(c, 84, 38, 11, 2, '#5a3a22'); px(c, 85, 37, 9, 1, '#8a5530'); px(c, 88, 35, 1, 2, '#2f4f8a'); px(c, 87, 34, 3, 1, '#f0c43c');
+      var by = horizon + 8;
+      px(c, 84, by, 11, 2, '#5a3a22'); px(c, 85, by - 1, 9, 1, '#8a5530'); px(c, 88, by - 3, 1, 2, '#2f4f8a'); px(c, 87, by - 4, 3, 1, '#f0c43c');
     }
     // the Thai bank, with riverside lamps
     px(c, 0, bankTop, PW, PH - bankTop, p.bank);
@@ -461,38 +478,46 @@
   function resultCard(r) {
     return fontsReady().then(function () {
       var W = 1080, H = 1350, k = makeCanvas(W, H), ctx = k.ctx, t = TIERS[r.tier];
-      var HEAD = 236, PANO_Y = HEAD + 6, PANO_H = PH * PS;
+      var HEAD = 236, PANO_H = PH * PS;
       ctx.fillStyle = t.bg[1];
       ctx.fillRect(0, 0, W, H);
 
-      // That Phanom behind the emblem, fading into the card below; the stupa is floodlit at night
-      ctx.drawImage(panorama(r.tier), 0, PANO_Y, PW * PS, PANO_H);
+      // That Phanom from the top of the card down to the ribbon, fading into the card below;
+      // the stupa is floodlit at night
+      ctx.drawImage(panorama(r.tier), 0, 0, PW * PS, PANO_H);
       if (PANO[r.tier].night) {
-        var halo = ctx.createRadialGradient(122, PANO_Y + 250, 10, 122, PANO_Y + 250, 230);
+        var halo = ctx.createRadialGradient(122, 468, 10, 122, 468, 230);
         halo.addColorStop(0, 'rgba(255,208,90,0.42)');
         halo.addColorStop(1, 'rgba(255,208,90,0)');
         ctx.fillStyle = halo;
-        ctx.fillRect(0, PANO_Y, 360, PANO_H);
+        ctx.fillRect(0, 200, 360, 500);
       }
-      var fade = ctx.createLinearGradient(0, PANO_Y + PANO_H - 120, 0, PANO_Y + PANO_H);
+      var fade = ctx.createLinearGradient(0, PANO_H - 120, 0, PANO_H);
       fade.addColorStop(0, hexA(t.bg[1], 0)); fade.addColorStop(1, hexA(t.bg[1], 1));
       ctx.fillStyle = fade;
-      ctx.fillRect(0, PANO_Y + PANO_H - 120, W, 121);
+      ctx.fillRect(0, PANO_H - 120, W, 121);
 
-      // white header with the company logo large, as the CI asks for cards
-      ctx.fillStyle = C.bg;
-      ctx.fillRect(0, 0, W, HEAD);
-      ctx.fillStyle = metalGradient(ctx, 0, HEAD, W, HEAD + 6, t.metal);
-      ctx.fillRect(0, HEAD, W, 6);
-      logo(ctx, 64, 34, 176);
-      text(ctx, 'The Magic Farmcare', W - 66, 98, '700 50px ' + PIXEL, C.greenDark, 'right');
-      text(ctx, 'การ์ดผลงานประจำปี · ' + t.label, W - 66, 142, '300 26px ' + KANIT, C.muted, 'right');
+      // header: the CI allows a dark band (with the logo's fields along its edge) or the logo straight
+      // on a darkened sky; either way the full-color logo with a white wordmark
+      if (r.header === 'sky') {
+        var shade = ctx.createLinearGradient(0, 0, 0, HEAD + 120);
+        shade.addColorStop(0, 'rgba(47,47,47,0.82)');
+        shade.addColorStop(0.55, 'rgba(47,47,47,0.55)');
+        shade.addColorStop(1, 'rgba(47,47,47,0)');
+        ctx.fillStyle = shade;
+        ctx.fillRect(0, 0, W, HEAD + 120);
+      } else {
+        headerBand(ctx, W, HEAD);
+      }
+      logo(ctx, 64, 34, 180, true);
+      text(ctx, 'The Magic Farmcare', W - 66, 98, '700 50px ' + PIXEL, C.gold, 'right');
+      text(ctx, 'การ์ดผลงานประจำปี · ' + t.label, W - 66, 142, '300 26px ' + KANIT, '#E6E6E6', 'right');
       ctx.font = '500 28px ' + KANIT;
       var home = 'ต้นตำรับจาก อ.ธาตุพนม จ.นครพนม', hw = ctx.measureText(home).width;
-      text(ctx, home, W - 66, 192, '500 28px ' + KANIT, C.charcoal, 'right');
+      text(ctx, home, W - 66, 192, '500 28px ' + KANIT, '#FFFFFF', 'right');
       ctx.save();
       ctx.translate(W - 66 - hw - 34, 166);
-      ctx.strokeStyle = C.greenDark; ctx.lineWidth = 2; ctx.lineJoin = 'round';
+      ctx.strokeStyle = C.gold; ctx.lineWidth = 2; ctx.lineJoin = 'round';
       ctx.stroke(new Path2D(ICONS.pin));
       ctx.beginPath(); ctx.arc(12, 10, 3, 0, Math.PI * 2); ctx.stroke();
       ctx.restore();
