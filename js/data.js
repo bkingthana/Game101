@@ -16,7 +16,12 @@
     safeVegBonus: 0.15, // leafy vegetables grown without chemical sprays sell for 15% more
     shareUrl: 'https://the-magic-farmcare.vercel.app', // the public link put on share cards
     // shop contact shown on the end screen; the card stays hidden until at least one is filled in
-    contact: { line: '', phone: '', map: '' },
+    contact: {
+      lineId: '@thanapun',
+      line: 'https://line.me/R/ti/p/@thanapun', // add-friend link of the LINE OA
+      phone: '042-532-096',
+      map: 'https://maps.app.goo.gl/jhmKQMaDMEPxBMa6A',
+    },
   };
 
   MF.SEASONS = [

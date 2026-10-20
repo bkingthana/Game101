@@ -781,9 +781,9 @@
 
   function contactHtml() {
     var c = MF.CONFIG.contact || {}, links = [];
-    if (c.line) links.push('<a class="btn btn-line" href="' + esc(c.line) + '" target="_blank" rel="noopener">แชทกับเราทาง LINE</a>');
+    if (c.line) links.push('<a class="btn btn-line" href="' + esc(c.line) + '" target="_blank" rel="noopener">แชทกับเราทาง LINE' + (c.lineId ? ' ' + esc(c.lineId) : '') + '</a>');
     if (c.phone) links.push('<a class="btn" href="tel:' + esc(c.phone.replace(/[^0-9+]/g, '')) + '">โทร ' + esc(c.phone) + '</a>');
-    if (c.map) links.push('<a class="btn" href="' + esc(c.map) + '" target="_blank" rel="noopener">แผนที่ร้าน</a>');
+    if (c.map) links.push('<a class="btn" href="' + esc(c.map) + '" target="_blank" rel="noopener">แผนที่ร้าน (Google Maps)</a>');
     if (!links.length) return '';
     return '<section class="card contact-card"><h2>ปรึกษาเรื่องปุ๋ย ยา และเมล็ดพันธุ์</h2>' +
       '<p>ทีมธนาพันธ์ ฟาร์มแคร์ อ.ธาตุพนม จ.นครพนม ยินดีให้คำแนะนำ</p><div class="contact-links">' + links.join('') + '</div></section>';
