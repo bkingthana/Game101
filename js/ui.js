@@ -748,6 +748,11 @@
 
   // no share sheet (desktop, some browsers): download the picture and copy the message with the link
   function saveCard(info) {
+    if (root.claude) {
+      // the claude.ai preview cannot save files; the public site can
+      copyText(info.text, 'ลิงก์ทดสอบนี้บันทึกรูปไม่ได้ แชร์รูปได้จากเว็บ ' + MF.CONFIG.shareUrl.replace(/^https?:\/\//, ''));
+      return;
+    }
     try {
       var a = doc.createElement('a');
       a.href = URL.createObjectURL(info.blob);
@@ -757,9 +762,15 @@
       a.remove();
       setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
     } catch (e) { /* downloads blocked */ }
-    var done = function () { toast('บันทึกรูปและคัดลอกข้อความพร้อมลิงก์แล้ว นำไปโพสต์ได้เลย'); };
-    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(info.text).then(done, function () { toast('บันทึกรูปแล้ว นำไปโพสต์ได้เลย'); });
-    else toast('บันทึกรูปแล้ว นำไปโพสต์ได้เลย');
+    copyText(info.text, 'บันทึกรูปแล้ว นำไปโพสต์ได้เลย', 'บันทึกรูปและคัดลอกข้อความพร้อมลิงก์แล้ว นำไปโพสต์ได้เลย');
+  }
+
+  function copyText(text, plain, copied) {
+    var fail = function () { toast(plain); };
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(function () { toast(copied || plain); }, fail);
+      else fail();
+    } catch (e) { fail(); }
   }
 
   function shareLine() {
