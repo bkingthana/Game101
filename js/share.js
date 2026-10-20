@@ -116,21 +116,6 @@
     });
   }
 
-  // a dark header band whose lower edge shows the logo's fields: green, gold and brown peeking out
-  function headerBand(ctx, W, h) {
-    [[C.brown, 30], [C.gold, 20], [C.green, 10], ['#2F2F2F', 0]].forEach(function (l) {
-      var y = h + l[1];
-      ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.lineTo(W, 0);
-      ctx.lineTo(W, y - 16);
-      ctx.bezierCurveTo(W * 0.68, y + 22, W * 0.32, y - 24, 0, y + 8);
-      ctx.closePath();
-      ctx.fillStyle = l[0];
-      ctx.fill();
-    });
-  }
-
   // "โทร … | LINE … | FB: …" with a line icon before each, centered or left-aligned at x
   function contactLine(ctx, x, y, size, align, color) {
     var ink = color || C.charcoal;
@@ -497,18 +482,14 @@
       ctx.fillStyle = fade;
       ctx.fillRect(0, PANO_H - 120, W, 121);
 
-      // header: the CI allows a dark band (with the logo's fields along its edge) or the logo straight
-      // on a darkened sky; either way the full-color logo with a white wordmark
-      if (r.header === 'sky') {
-        var shade = ctx.createLinearGradient(0, 0, 0, HEAD + 120);
-        shade.addColorStop(0, 'rgba(47,47,47,0.82)');
-        shade.addColorStop(0.55, 'rgba(47,47,47,0.55)');
-        shade.addColorStop(1, 'rgba(47,47,47,0)');
-        ctx.fillStyle = shade;
-        ctx.fillRect(0, 0, W, HEAD + 120);
-      } else {
-        headerBand(ctx, W, HEAD);
-      }
+      // header: the logo straight on the sky, darkened toward the top so the full-color logo with a
+      // white wordmark (the CI's version for dark backgrounds) and the titles read clearly
+      var shade = ctx.createLinearGradient(0, 0, 0, HEAD + 120);
+      shade.addColorStop(0, 'rgba(47,47,47,0.82)');
+      shade.addColorStop(0.55, 'rgba(47,47,47,0.55)');
+      shade.addColorStop(1, 'rgba(47,47,47,0)');
+      ctx.fillStyle = shade;
+      ctx.fillRect(0, 0, W, HEAD + 120);
       logo(ctx, 64, 34, 180, true);
       text(ctx, 'The Magic Farmcare', W - 66, 98, '700 50px ' + PIXEL, C.gold, 'right');
       text(ctx, 'การ์ดผลงานประจำปี · ' + t.label, W - 66, 142, '300 26px ' + KANIT, '#E6E6E6', 'right');
