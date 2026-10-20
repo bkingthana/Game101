@@ -367,6 +367,15 @@
     var w = state.weather.actual;
     var respond = state.weather.respond;
     var plots = state.plots.map(function (p, i) { return harvestPlot(state, p, i, season, w, respond); });
+    // a fertilizer note (21-0-0 and soil acidity) goes once a season, on the first plot that used it
+    var noted = {};
+    state.plots.forEach(function (p, i) {
+      if (!isCrop(p.use)) return;
+      [p.basal, p.top].forEach(function (fid) {
+        var f = fid && MF.FERTS[fid];
+        if (f && f.tip && !noted[fid]) { noted[fid] = true; plots[i].tips.push({ tone: 'good', text: f.tip }); }
+      });
+    });
     var revenue = plots.reduce(function (s, r) { return s + r.revenue; }, 0);
 
     state.money += revenue;

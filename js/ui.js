@@ -96,6 +96,17 @@
 
   function plotNum(i) { return '<span class="plot-num">' + (i + 1) + '</span>'; }
 
+  /* fertilizer ids in picker order: full effect at this stage first, then 'any', then the 60% ones */
+  function fertOrder(stage) {
+    var rank = function (id) { var b = MF.FERTS[id].best; return b === stage ? 0 : b === 'any' ? 1 : 2; };
+    return Object.keys(MF.FERTS).sort(function (a, b) { return rank(a) - rank(b); });
+  }
+
+  // "N+12 P+16": what one bag adds at this stage
+  function addText(add) {
+    return ['N', 'P', 'K'].filter(function (k) { return Math.round(add[k]) > 0; }).map(function (k) { return k + '+' + Math.round(add[k]); }).join(' ');
+  }
+
   function toast(text) {
     var t = $('toast');
     t.textContent = text;
@@ -287,7 +298,7 @@
         html += '<div class="top-row"><div class="top-head">' + plotNum(x.i) + '<b>' + esc(crop.name) + '</b>' + hint + '</div>' +
           soilBars(x.p.soil, add, crop.need) + '<div class="chips">' +
           '<button class="chip" data-action="top" data-i="' + x.i + '" data-f="" data-key="top-' + x.i + '-none" aria-pressed="' + !x.p.top + '">ไม่ใส่</button>';
-        Object.keys(MF.FERTS).forEach(function (fid) {
+        fertOrder('top').forEach(function (fid) {
           var f = MF.FERTS[fid];
           html += '<button class="chip" data-action="top" data-i="' + x.i + '" data-f="' + fid + '" data-key="top-' + x.i + '-' + fid + '" aria-pressed="' + (x.p.top === fid) + '">' +
             '<b>' + esc(f.name) + '</b><span class="num">' + fmt(f.cost) + '</span>' + (f.best === 'basal' ? '<small>ได้ผล 60%</small>' : '') + '</button>';
@@ -420,17 +431,30 @@
     html += '<p class="crop-note">' + esc(note) + '</p>';
 
     if (crop) {
-      html += '<h3 class="sheet-sub">ปุ๋ยรองพื้น <small>ใส่ตอนปลูก</small></h3><div class="fert-list">';
-      Object.keys(MF.FERTS).forEach(function (fid) {
-        var f = MF.FERTS[fid];
-        var timing = f.best === 'basal' ? 'เหมาะใช้รองพื้น' : f.best === 'top' ? 'เหมาะใช้แต่งหน้า · ใส่ตอนนี้ได้ผล 60%' : 'ใช้ได้ทุกช่วง';
-        html += '<button class="fert" data-action="pick-basal" data-f="' + fid + '" data-key="basal-' + fid + '" aria-pressed="' + (d.basal === fid) + '">' +
-          '<span class="sack">' + S.img('sack', 3, { x: f.color }) + '</span>' +
-          '<span class="fert-text"><b>' + esc(f.name) + ' · ' + esc(f.tag) + '</b><small>' + esc(f.desc) + '</small><small class="timing">' + timing + '</small></span>' +
-          '<span class="price num">' + fmt(f.cost) + '</span></button>';
+      // grouped by timing: what works fully at planting (with "none" first), then the top-dressing ones at 60%
+      var ferts = fertOrder('basal');
+      var groups = [
+        ['เหมาะใส่ตอนปลูก', ferts.filter(function (id) { return MF.FERTS[id].best !== 'top'; })],
+        ['ปุ๋ยแต่งหน้า ใส่ตอนปลูกได้ผลแค่ 60%', ferts.filter(function (id) { return MF.FERTS[id].best === 'top'; })],
+      ];
+      html += '<h3 class="sheet-sub">ปุ๋ยรองพื้น <small>ใส่ตอนปลูก</small></h3>' +
+        '<p class="fert-note">ราคาในเกมเทียบจากราคาวัตถุดิบปุ๋ยตลาดโลกเฉลี่ยหลายปี ไม่ใช่ราคาขายจริง</p>';
+      groups.forEach(function (g, gi) {
+        html += '<p class="fert-group">' + g[0] + '</p><div class="fert-list">';
+        if (gi === 0) {
+          html += '<button class="fert" data-action="pick-basal" data-f="" data-key="basal-none" aria-pressed="' + !d.basal + '">' +
+            '<span class="sack">' + S.img('none', 3) + '</span><span class="fert-text"><b>ไม่ใส่ปุ๋ยรองพื้น</b><small>ใช้ธาตุอาหารที่มีในดินอย่างเดียว</small></span><span class="price num">0</span></button>';
+        }
+        g[1].forEach(function (fid) {
+          var f = MF.FERTS[fid];
+          var gives = 'ได้ ' + addText(E.fertAdd(fid, 'basal')) + (f.best === 'any' ? ' · ใช้ได้ทุกช่วง' : '');
+          html += '<button class="fert" data-action="pick-basal" data-f="' + fid + '" data-key="basal-' + fid + '" aria-pressed="' + (d.basal === fid) + '">' +
+            '<span class="sack">' + S.img('sack', 3, { x: f.color }) + '</span>' +
+            '<span class="fert-text"><b>' + esc(f.name) + ' · ' + esc(f.tag) + '</b><small>' + esc(f.desc) + '</small><small class="timing">' + gives + '</small></span>' +
+            '<span class="price num">' + fmt(f.cost) + '</span></button>';
+        });
+        html += '</div>';
       });
-      html += '<button class="fert" data-action="pick-basal" data-f="" data-key="basal-none" aria-pressed="' + !d.basal + '">' +
-        '<span class="sack">' + S.img('none', 3) + '</span><span class="fert-text"><b>ไม่ใส่ปุ๋ยรองพื้น</b><small>ใช้ธาตุอาหารที่มีในดินอย่างเดียว</small></span><span class="price num">0</span></button></div>';
     }
 
     var prevents = E.preventionsFor(d.use);
@@ -506,6 +530,8 @@
       '<li>แปลงที่ลุ่มเสี่ยงน้ำท่วม แปลงที่ดอนเสี่ยงแล้ง แปลงริมโขงดินดี สูบน้ำได้ถูก แต่หน้าฝนน้ำโขงขึ้น</li>' +
       '<li>ผักกินใบที่ไม่ใช้ยาเคมี หรือใช้ชีวภัณฑ์ (เชื้อบีที ไตรโคเดอร์มา) ขายเป็นผักปลอดภัย ได้ราคาเพิ่ม ' + Math.round(MF.CONFIG.safeVegBonus * 100) + '%</li>' +
       '<li>ปลูกพืชเดิมซ้ำแปลงเดิม โรคและแมลงจะมากขึ้น ใส่ไนโตรเจนมากไปก็เช่นกัน</li>' +
+      '<li>ปุ๋ยถุงถูกไม่ได้คุ้มเสมอ เช่น 21-0-0 ถุงถูกกว่ายูเรียเกือบครึ่ง แต่ไนโตรเจนไม่ถึงครึ่ง เหมาะตอนดินขาด N ไม่มาก ส่วนดินที่ K พอแล้ว ใช้ 16-20-0 หรือ 30-20-0 รองพื้นได้</li>' +
+      '<li>ราคาปุ๋ยในเกมเทียบจากราคาวัตถุดิบปุ๋ยตลาดโลกเฉลี่ยหลายปี ให้เห็นว่าสูตรไหนแพงหรือถูกกว่ากันราวเท่าไหร่ ไม่ใช่ราคาขายจริง</li>' +
       '<li>โรคในดิน เช่น เน่าคอดิน รากเน่า รักษาตอนเป็นแล้วได้ผลไม่เต็มที่ คลุกเมล็ดหรือใส่ไตรโคเดอร์มาตั้งแต่ปลูกช่วยป้องกัน</li>' +
       '<li>ฤดูร้อนน้ำน้อย ทุกพืชได้ผลผลิตต่ำ แปลงริมโขงสูบน้ำได้ถูกกว่า</li>' +
       '</ul></div>';

@@ -1,5 +1,5 @@
 /* Balance check: plays thousands of games with scripted strategies and prints final money.
-   Run: node scripts/sim.js [games] */
+   Run: node scripts/sim.js [games]   (FERTS=1 also prints how often each fertilizer is used) */
 require('../js/data.js');
 require('../js/engine.js');
 var MF = globalThis.MF;
@@ -25,6 +25,33 @@ function bestTop(plot, use) {
   if (need.K - av.K > 5) return 'f0060';
   if (need.N - av.N > 5) return 'f4600';
   return null;
+}
+
+/* yield value minus fertilizer cost for a basal + top pair, over every fertilizer in the game */
+function pairValue(plot, use, sid, basal, top) {
+  var crop = MF.CROPS[use];
+  var nut = E.nutrientFactor(crop, E.available({ soil: plot.soil, basal: basal, top: top }, true).total);
+  return crop.baseYield * crop.suit[sid] * nut.nf * (nut.excess ? 0.86 : 1) * crop.price -
+    (basal ? MF.FERTS[basal].cost : 0) - (top ? MF.FERTS[top].cost : 0);
+}
+var FERT_IDS = [null].concat(Object.keys(MF.FERTS));
+function optBasal(plot, use, s) {
+  var sid = E.seasonOf(s).season.id, best = null;
+  FERT_IDS.forEach(function (b) {
+    FERT_IDS.forEach(function (t) {
+      var v = pairValue(plot, use, sid, b, t);
+      if (!best || v > best.v + 0.5) best = { v: v, b: b };
+    });
+  });
+  return best.b;
+}
+function optTop(plot, use, s) {
+  var sid = E.seasonOf(s).season.id, best = null;
+  FERT_IDS.forEach(function (t) {
+    var v = pairValue(plot, use, sid, plot.basal, t);
+    if (!best || v > best.v + 0.5) best = { v: v, t: t };
+  });
+  return best.t;
 }
 
 // a working product among the four shown for this pest
@@ -57,7 +84,8 @@ function expertPrevent(i, use) {
   return E.preventionsFor(use).filter(function (id) { return id === 'seedcoat' || MF.PLOTS[i].wet; });
 }
 
-function planBest(s, crops, prevent) {
+function planBest(s, crops, prevent, basalFn) {
+  basalFn = basalFn || bestBasal;
   var picks = s.plots.map(function (p, i) {
     var ranked = crops.map(function (u) { return { use: u, v: expectedProfit(s, i, u) }; })
       .sort(function (a, b) { return b.v - a.v; });
@@ -69,7 +97,7 @@ function planBest(s, crops, prevent) {
     for (var k = 0; k < pk.ranked.length; k++) {
       var c = pk.ranked[k];
       if (c.v < 200) break;
-      E.setPlan(s, pk.i, c.use, bestBasal(p, c.use), prevent ? expertPrevent(pk.i, c.use) : []);
+      E.setPlan(s, pk.i, c.use, basalFn(p, c.use, s), prevent ? expertPrevent(pk.i, c.use) : []);
       if (E.planCost(s) <= s.money - 1500) return;
       E.setPlan(s, pk.i, 'idle', null);
     }
@@ -79,28 +107,36 @@ function planBest(s, crops, prevent) {
 var ALL_CROPS = Object.keys(MF.CROPS);
 var GRAINS = ['rice', 'corn', 'shallot'];
 
+// right product for every pest, water when needed, top-dressing chosen by topFn
+function expertCare(s, topFn) {
+  if (E.weatherResponse(s)) E.setResponse(s, true);
+  s.plots.forEach(function (p, i) {
+    if (!E.isCrop(p.use)) return;
+    if (p.event) {
+      var ok = MF.EVENTS[p.event.id].correct;
+      var bio = p.event.options.filter(function (x) { return ok.indexOf(x) >= 0 && MF.PRODUCTS[x].group === 'bio'; })[0];
+      E.setTreatment(s, i, MF.CROPS[p.use].veg && bio ? bio : correctFor(p.event));
+    }
+    E.setTop(s, i, topFn(p, p.use, s));
+  });
+  while (E.careCost(s) > s.money) {
+    var p = s.plots.find(function (x) { return x.top; });
+    if (!p) break;
+    p.top = null;
+  }
+  if (E.careCost(s) > s.money) E.setResponse(s, false);
+}
+
 var strategies = {
   // picks the most profitable crop for each plot from every crop in the game
   expert: {
     plan: function (s) { planBest(s, ALL_CROPS, true); },
-    care: function (s) {
-      if (E.weatherResponse(s)) E.setResponse(s, true);
-      s.plots.forEach(function (p, i) {
-        if (!E.isCrop(p.use)) return;
-        if (p.event) {
-          var ok = MF.EVENTS[p.event.id].correct;
-          var bio = p.event.options.filter(function (x) { return ok.indexOf(x) >= 0 && MF.PRODUCTS[x].group === 'bio'; })[0];
-          E.setTreatment(s, i, MF.CROPS[p.use].veg && bio ? bio : correctFor(p.event));
-        }
-        E.setTop(s, i, bestTop(p, p.use));
-      });
-      while (E.careCost(s) > s.money) {
-        var p = s.plots.find(function (x) { return x.top; });
-        if (!p) break;
-        p.top = null;
-      }
-      if (E.careCost(s) > s.money) E.setResponse(s, false);
-    },
+    care: function (s) { expertCare(s, bestTop); },
+  },
+  // same as expert, but picks basal and top-dressing from every fertilizer by yield value minus cost
+  fertopt: {
+    plan: function (s) { planBest(s, ALL_CROPS, true, optBasal); },
+    care: function (s) { expertCare(s, optTop); },
   },
   // same skill, but only grows rice, corn and shallot (the game before vegetables)
   grains: {
@@ -138,12 +174,17 @@ var strategies = {
   },
 };
 
-function play(strategy, seed) {
+function play(strategy, seed, used) {
   var s = E.newGame(seed);
   while (s.stage !== 'end') {
     strategy.plan(s);
     if (!E.startGrowing(s)) throw new Error('plan over budget at season ' + s.season);
     strategy.care(s);
+    s.plots.forEach(function (p) {
+      if (!E.isCrop(p.use)) return;
+      used.basal[p.basal || 'none'] = (used.basal[p.basal || 'none'] || 0) + 1;
+      used.top[p.top || 'none'] = (used.top[p.top || 'none'] || 0) + 1;
+    });
     if (!E.harvest(s)) throw new Error('care over budget at season ' + s.season);
     E.nextSeason(s);
   }
@@ -153,9 +194,9 @@ function play(strategy, seed) {
 function q(sorted, p) { return sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * p))]; }
 
 Object.keys(strategies).forEach(function (name) {
-  var money = [], stars = [0, 0, 0, 0], bankrupt = 0;
+  var money = [], stars = [0, 0, 0, 0], bankrupt = 0, used = { basal: {}, top: {} };
   for (var g = 0; g < GAMES; g++) {
-    var s = play(strategies[name], 1000 + g);
+    var s = play(strategies[name], 1000 + g, used);
     money.push(s.money);
     stars[E.stars(s.money)]++;
     if (s.over === 'bankrupt') bankrupt++;
@@ -172,4 +213,12 @@ Object.keys(strategies).forEach(function (name) {
     '| stars 0/1/2/3:', stars.map(function (n) { return Math.round((n / GAMES) * 100) + '%'; }).join(' / '),
     '| bankrupt', Math.round((bankrupt / GAMES) * 100) + '%'
   );
+  if (process.env.FERTS) {
+    ['basal', 'top'].forEach(function (slot) {
+      var u = used[slot], total = Object.keys(u).reduce(function (a, k) { return a + u[k]; }, 0);
+      console.log('   ' + slot.padEnd(5), Object.keys(u).sort(function (a, b) { return u[b] - u[a]; }).map(function (k) {
+        return (k === 'none' ? 'none' : MF.FERTS[k].name) + ' ' + Math.round((u[k] / total) * 100) + '%';
+      }).join(', '));
+    });
+  }
 });
