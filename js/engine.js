@@ -97,7 +97,7 @@
       weather: null,
       results: null,
       history: [],
-      stats: { treated: 0, correct: 0, kg: { rice: 0, corn: 0, shallot: 0 }, revenue: 0, cost: 0 },
+      stats: { treated: 0, correct: 0, kg: Object.keys(MF.CROPS).reduce(function (o, k) { o[k] = 0; return o; }, {}), revenue: 0, cost: 0 },
       seasonCost: 0,
       tutorial: {},
     };
@@ -141,8 +141,9 @@
     var listed = e.correct.concat(Object.keys(e.partial), Object.keys(e.harmful));
     var opts = shuffle(state, e.correct).slice(0, 2).concat(Object.keys(e.partial), Object.keys(e.harmful));
     var sameGroup = { insect: ['insect', 'bio'], disease: ['fungus'], weed: ['weed'] }[e.type];
+    var keep = e.notWrong || [];
     var rest = Object.keys(MF.PRODUCTS).filter(function (k) {
-      return listed.indexOf(k) < 0 && MF.PRODUCTS[k].distractor !== false;
+      return listed.indexOf(k) < 0 && keep.indexOf(k) < 0 && MF.PRODUCTS[k].distractor !== false;
     });
     var near = shuffle(state, rest.filter(function (k) { return sameGroup.indexOf(MF.PRODUCTS[k].group) >= 0; }));
     var far = shuffle(state, rest.filter(function (k) { return sameGroup.indexOf(MF.PRODUCTS[k].group) < 0; }));
@@ -242,6 +243,8 @@
     if (w === 'drought') wl = crop.drought * info.droughtMult * (respond ? 0.15 : 1);
     if (w === 'flood') wl = crop.flood * info.floodMult * (respond ? 0.25 : 1);
     wl = clamp(wl, 0, 0.95);
+    // the Mekong rises over the riverside plot every rainy season, whatever the weather
+    var riverLoss = clamp(crop.flood * ((info.riverRise && info.riverRise[season.id]) || 0), 0, 0.9);
 
     var pest = null;
     if (p.event) {
@@ -252,10 +255,14 @@
     }
 
     var jitter = 1 + (rand(state) * 2 - 1) * C.yieldJitter;
-    var kg = Math.round(crop.baseYield * suit * nut.nf * (nut.excess ? 0.9 : 1) * (1 - wl) * (1 - (pest ? pest.loss : 0)) * jitter);
+    var kg = Math.round(crop.baseYield * suit * nut.nf * (nut.excess ? 0.9 : 1) * (1 - wl) * (1 - riverLoss) * (1 - (pest ? pest.loss : 0)) * jitter);
+    var spray = p.event && p.event.choice && p.event.choice !== 'none' ? MF.PRODUCTS[p.event.choice] : null;
+    var safe = !!crop.veg && (!spray || spray.group === 'bio');
     r.kg = Math.max(0, kg);
-    r.revenue = Math.round(r.kg * crop.price);
-    r.factors = { suit: suit, nf: nut.nf, limiting: nut.limiting, excess: nut.excess, weatherLoss: wl, pest: pest, eventId: p.event ? p.event.id : null };
+    r.price = safe ? Math.round(crop.price * (1 + C.safeVegBonus) * 10) / 10 : crop.price;
+    r.safe = safe;
+    r.revenue = Math.round(r.kg * r.price);
+    r.factors = { suit: suit, nf: nut.nf, limiting: nut.limiting, excess: nut.excess, weatherLoss: wl, riverLoss: riverLoss, pest: pest, eventId: p.event ? p.event.id : null, safe: safe, sprayed: !!(crop.veg && spray && !safe) };
 
     var grow = Math.min(1, suit * nut.nf);
     var care = p.basal && MF.FERTS[p.basal].soilCare ? 0.75 : 1;
@@ -264,7 +271,7 @@
     });
     r.soilAfter = { N: p.soil.N, P: p.soil.P, K: p.soil.K };
     r.tips = cropTips(p, crop, season, w, respond, r.factors);
-    state.stats.kg[p.use] += r.kg;
+    state.stats.kg[p.use] = (state.stats.kg[p.use] || 0) + r.kg;
     return r;
   }
 
@@ -287,12 +294,15 @@
       else if (w === 'drought') tips.push({ tone: 'bad', text: 'พืชขาดน้ำ ผลผลิตลด ' + pct(f.weatherLoss) + ' ครั้งหน้าลองสูบน้ำเข้าแปลง' });
       else tips.push({ tone: 'bad', text: 'น้ำท่วมขัง ผลผลิตลด ' + pct(f.weatherLoss) + ' ครั้งหน้าลองขุดร่องระบายน้ำ' });
     }
+    if (f.riverLoss > 0.04) tips.push({ tone: 'bad', text: 'น้ำโขงขึ้นท่วมแปลงริมฝั่ง ผลผลิตลด ' + pct(f.riverLoss) + ' หน้าฝนแปลงนี้เหมาะกับผักบุ้งหรือข้าวที่ทนน้ำ' });
+    if (f.safe) tips.push({ tone: 'good', text: 'ไม่ใช้ยาเคมี ขายเป็นผักปลอดภัย ได้ราคาเพิ่ม ' + pct(C.safeVegBonus) });
+    if (f.sprayed) tips.push({ tone: 'bad', text: 'ผักที่ฉีดยาเคมีต้องเว้นระยะก่อนเก็บเกี่ยว ขายได้ราคาปกติ ถ้าใช้เชื้อบีทีหรือไม่ใช้ยาจะได้ราคาผักปลอดภัย' });
     if (f.nf < 0.95) {
       var k = f.limiting;
       tips.push({ tone: 'bad', text: 'ดินขาด' + MF.NUTRIENT_NAMES[k] + ' (' + k + ') ผลผลิตลด ' + pct(1 - f.nf) + ' ลองใช้ ' + MF.NUTRIENT_FIX[k] });
     }
     if (f.excess) tips.push({ tone: 'bad', text: 'ใส่ไนโตรเจนมากเกินไป ต้นอ่อนแอ ล้มง่าย แมลงชอบ' });
-    if (!tips.some(function (t) { return t.tone === 'bad'; })) tips.push({ tone: 'good', text: 'ดูแลได้ดีมาก ' + crop.name + 'งามเต็มแปลง' });
+    if (!tips.some(function (t) { return t.tone === 'bad'; })) tips.unshift({ tone: 'good', text: 'ดูแลได้ดีมาก ' + crop.name + 'งามเต็มแปลง' });
     return tips;
   }
 

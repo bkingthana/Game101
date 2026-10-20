@@ -14,6 +14,8 @@
     x: '#d9473a',
     // Thanapun Farmcare logo colors (from the brand color guide)
     q: '#93d7ed', m: '#9ccb3c', M: '#76a028', d: '#ddb75a', u: '#a97f51',
+    // kale leaves (blue-green)
+    K: '#2e7d6b', O: '#4fa88a',
   };
 
   var ART = {
@@ -30,6 +32,15 @@
     fallow0: ['........', '........', '........', '........', '........', '........', '........', '..l..l..', '..g.lg..', '...gG...'],
     fallow1: ['........', '........', '........', '..l..l..', '.lgl.lg.', '..g..g..', '..gl.g..', '..g.lg..', '...gg...', '...GG...'],
     fallow2: ['..y..y..', '.yoy.yy.', '..y.oy..', '..gl.g..', '.lg.lgl.', '..g..g..', '..gl.g..', '..g.lg..', '...gg...', '...GG...'],
+    waterspinach0: ['........', '........', '........', '........', '........', '........', '........', '..l..l..', '...ll...', '...gG...'],
+    waterspinach1: ['........', '........', '........', '...l....', '.lgl.gl.', '..gl.lg.', '.lg.gl..', '..lggg..', '.l.gG.l.', '...GG...'],
+    waterspinach2: ['........', '..w..l..', '.lgl.gll', 'lggl.lgg', '.lgglgg.', 'lgl.lggl', '.lgglgl.', 'lggglggl', '.lgGGgl.', '..GGGG..'],
+    kale0: ['........', '........', '........', '........', '........', '........', '........', '..K..K..', '...KK...', '...gG...'],
+    kale1: ['........', '........', '........', '..KK....', '.KOKK.K.', '.KKOKKK.', '..KKOK..', '...Kg...', '...gg...', '...GG...'],
+    kale2: ['........', '.KK..KK.', 'KOKKKKOK', 'KKOKKOKK', '.KKOKOK.', 'KKKOKOKK', '.KK.g.K.', '...gg...', '...gg...', '...GG...'],
+    dill0: ['........', '........', '........', '........', '........', '........', '...l....', '..l.l...', '...l....', '...g....'],
+    dill1: ['........', '........', '...l....', '.l.l.l..', '..lLl...', '.l.l.l..', '..lll...', '...l.l..', '...g....', '...g....'],
+    dill2: ['..l.L.l.', '.lLlLlL.', 'L.lLl.lL', '.lLlLlL.', 'l.LlLl.l', '.l.lLl..', '..lLlL..', '...lL...', '...gl...', '...gg...'],
     idle: ['........', '........', '........', '........', '........', '........', '........', '.ssssss.', 'sSsSsSss', 'SSSSSSSS'],
 
     /* ---- tiny pests that crawl over a plot ---- */
@@ -154,7 +165,7 @@
     return '<img class="px ' + (cls || '') + '" src="' + url(name, over) + '" width="' + s.w * scale + '" height="' + s.h * scale + '" alt="">';
   }
 
-  var LEAF_SPOTS = { leafBlast: '#8a5530', leafDowny: '#e9e39a', leafPurple: '#8c3a78' };
+  var LEAF_SPOTS = { leafBlast: '#8a5530', leafDowny: '#e9e39a', leafPurple: '#8c3a78', leafRust: '#ffffff', leafRot: '#4a2c16' };
 
   /* Icon for a pest event (the three leaf diseases share one leaf with different spots). */
   function eventIcon(spriteName, scale) {

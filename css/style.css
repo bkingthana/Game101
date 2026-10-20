@@ -355,6 +355,7 @@ img.px { image-rendering: crisp-edges; image-rendering: pixelated; display: bloc
 .r-line { display: grid; grid-template-columns: auto auto 1fr auto; align-items: center; gap: 8px; }
 .r-name { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; }
 .r-name small { font-size: 12px; color: var(--ink-soft); }
+.safe-tag { align-self: flex-start; margin-top: 2px; padding: 0 6px; font-size: 11px; font-weight: 700; color: #fff; background: var(--leaf); }
 .r-amt { font-size: 26px; }
 .tips { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 5px; }
 .tips li { position: relative; padding-left: 16px; font-size: 13px; line-height: 1.45; }
@@ -432,7 +433,7 @@ img.px { image-rendering: crisp-edges; image-rendering: pixelated; display: bloc
 .suit-good { color: var(--leaf); }
 .suit-mid { color: #8a6410; }
 .suit-bad { color: var(--chili); }
-.choice[aria-pressed="true"] .suit { color: var(--edge); }
+.choice[aria-pressed="true"] .suit { color: var(--gold); background: var(--edge); padding: 1px 5px; }
 .crop-note { font-size: 13px; color: var(--ink); background: var(--panel-2); padding: 8px 10px; }
 .fert-list { display: grid; gap: 8px; }
 

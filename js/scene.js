@@ -16,7 +16,7 @@
     { base: '#6e4426', furrow: '#55321c' }, // clay, lowland
     { base: '#b98a55', furrow: '#9a6f40' }, // sandy loam, upland
     { base: '#8a5a33', furrow: '#6e4426' }, // loam
-    { base: '#cfae79', furrow: '#b38f5c' }, // sand by the pond
+    { base: '#9a8468', furrow: '#7d6a52' }, // Mekong silt
   ];
   var SKY = {
     rain: ['#8fb4cf', '#a9c7dc', '#c3d8e6'],
@@ -69,12 +69,33 @@
     rect(ctx, x + 1, y + 6, 16, 1, s);
   }
 
-  function drawHills(ctx) {
+  /* limestone karst peaks on the Lao bank, as seen across the Mekong from Nakhon Phanom:
+     steep sides, rounded tops, two layers of haze */
+  var FAR_PEAKS = [[8, 5, 15], [30, 7, 19], [52, 4, 13], [74, 6, 18], [100, 8, 16], [124, 5, 20], [150, 7, 15]];
+  var NEAR_PEAKS = [[18, 5, 9], [42, 6, 12], [64, 4, 8], [88, 7, 11], [112, 5, 9], [138, 6, 12]];
+
+  function peakHeight(peaks, x) {
+    var best = 0;
+    peaks.forEach(function (p) {
+      var dx = Math.abs(x - p[0]), top = p[1], h = p[2];
+      var v = dx <= top ? h - Math.round((dx / top) * (dx / top) * 2) : h - 2 - (dx - top) * 3;
+      if (v > best) best = v;
+    });
+    return best;
+  }
+
+  function drawMountains(ctx) {
     for (var x = 0; x < W; x++) {
-      var h1 = Math.round(26 + 4 * Math.sin(x / 13) + 2 * Math.sin(x / 5.3));
-      rect(ctx, x, h1, 1, 36 - h1, '#5e8f6a');
-      var h2 = Math.round(30 + 3 * Math.sin(x / 9 + 2) + 1.5 * Math.sin(x / 3.7));
-      rect(ctx, x, h2, 1, 36 - h2, '#3f7a4f');
+      var far = peakHeight(FAR_PEAKS, x);
+      if (far > 0) rect(ctx, x, 34 - far, 1, far, '#93a0c6');
+      var near = peakHeight(NEAR_PEAKS, x);
+      if (near > 0) {
+        rect(ctx, x, 34 - near, 1, near, '#6f80ab');
+        if (peakHeight(NEAR_PEAKS, x - 1) < near) rect(ctx, x, 34 - near, 1, 2, '#8796bd'); // sunlit left faces
+      }
+      // tree line along the far bank
+      var trees = 2 + Math.round(1.2 * Math.sin(x / 2.3) + Math.sin(x / 5.1));
+      rect(ctx, x, 34 - trees, 1, trees, '#3f6b4f');
     }
   }
 
@@ -101,11 +122,12 @@
 
   function drawPalm(ctx, t) {
     var sway = reduceMotion ? 0 : Math.round(Math.sin(t / 900));
+    var bx = 46;
     for (var i = 0; i < 26; i++) {
-      var x = 146 + Math.round(Math.sin(i / 9) * 2) + (i > 18 ? sway : 0);
+      var x = bx + Math.round(Math.sin(i / 9) * 2) + (i > 18 ? sway : 0);
       rect(ctx, x, 40 - i, 2, 1, i % 3 ? '#8a5530' : '#6e4426');
     }
-    var tx = 148 + sway, ty = 14;
+    var tx = bx + 2 + sway, ty = 14;
     var fronds = [[-1, 0], [1, 0], [-1, 1], [1, 1], [0, -1], [-1, -1], [1, -1]];
     fronds.forEach(function (f, n) {
       for (var j = 1; j < 10; j++) {
@@ -118,19 +140,40 @@
     rect(ctx, tx - 1, ty + 2, 1, 1, '#c48f22'); rect(ctx, tx + 1, ty + 2, 1, 1, '#c48f22');
   }
 
-  function drawPond(ctx, t, low) {
-    var x0 = 134, y0 = 72, w = 23, h = 24;
-    for (var dy = 0; dy < h; dy++) {
-      var inset = Math.round(4 * Math.pow(Math.abs(dy - h / 2) / (h / 2), 2));
-      rect(ctx, x0 + inset, y0 + dy, w - inset * 2, 1, '#3a6b3a');
-      rect(ctx, x0 + inset + 1, y0 + dy, w - inset * 2 - 2, 1, low && dy < 5 ? '#8a6a45' : '#2f73c0');
+  /* The Mekong runs down the right side, widening toward the viewer. It rises and turns muddy in
+     the rainy season and drops in the hot season, leaving a sandbar. */
+  var RIVER = {
+    rain: { shift: -4, water: '#7a7552', light: '#c4bb92', ripples: 16 },
+    cool: { shift: 0, water: '#5b93a6', light: '#8bbdca', ripples: 9 },
+    hot: { shift: 5, water: '#6aa2b0', light: '#9fcad3', ripples: 9 },
+  };
+
+  function riverEdge(y, shift) { return Math.round(146 - (y - 33) * 0.21) + shift; }
+
+  function drawRiver(ctx, t, season) {
+    var r = RIVER[season] || RIVER.cool;
+    for (var y = 33; y < H; y++) {
+      var bank = riverEdge(y, 0), edge = riverEdge(y, r.shift);
+      var sand = Math.min(bank, edge) - 2;
+      rect(ctx, sand, y, W - sand, 1, '#d6c08c');
+      rect(ctx, edge, y, W - edge, 1, r.water);
+      rect(ctx, edge, y, 1, 1, r.light); // wet edge of the water
     }
-    var ph = reduceMotion ? 0 : Math.floor(t / 400) % 3;
-    rect(ctx, x0 + 5 + ph, y0 + 9, 4, 1, '#6cb8ec');
-    rect(ctx, x0 + 11 - ph, y0 + 15, 5, 1, '#6cb8ec');
-    rect(ctx, x0 + 6, y0 + 18, 3, 2, '#86cc5a');
-    rect(ctx, x0 + 14, y0 + 6, 3, 2, '#86cc5a');
-    rect(ctx, x0 + 15, y0 + 5, 1, 1, '#f39ac0');
+    var tt = reduceMotion ? 0 : t;
+    for (var i = 0; i < r.ripples; i++) {
+      var ry = 36 + Math.floor((i * 4.3 + tt / 90) % 62);
+      rect(ctx, riverEdge(ry, r.shift) + 3 + Math.floor(hash(i * 5) * 12), ry, 4, 1, r.light);
+    }
+    // long-tail boat drifting on the river
+    var by = Math.round(58 + Math.sin(tt / 2400) * 10), bob = reduceMotion ? 0 : Math.round(Math.sin(tt / 500));
+    var bx = riverEdge(by, r.shift) + 6;
+    rect(ctx, bx, by + bob, 11, 2, '#5a3a22');
+    rect(ctx, bx + 1, by - 1 + bob, 9, 1, '#8a5530');
+    rect(ctx, bx + 10, by - 2 + bob, 1, 1, '#8a5530');
+    rect(ctx, bx - 2, by + 1 + bob, 2, 1, '#7d8a92');
+    rect(ctx, bx + 4, by - 3 + bob, 1, 2, '#2f4f8a');
+    rect(ctx, bx + 4, by - 4 + bob, 1, 1, '#f1c79a');
+    rect(ctx, bx + 3, by - 5 + bob, 3, 1, '#f0c43c');
   }
 
   function drawPlot(ctx, i, p, t, view) {
@@ -165,7 +208,7 @@
       if (ev.type === 'weed') {
         for (var k = 0; k < 6; k++) S.draw(ctx, 'miniWeed', r.x + 5 + k * 9, r.y + (k % 2 ? 16 : 6));
       } else if (ev.type === 'disease') {
-        var spot = ev.sprite === 'leafPurple' ? '#8c3a78' : ev.sprite === 'leafDowny' ? '#f3ee9a' : '#7a3b1c';
+        var spot = { leafPurple: '#8c3a78', leafDowny: '#f3ee9a', leafRust: '#ffffff', leafRot: '#4a2c16' }[ev.sprite] || '#7a3b1c';
         var blink = reduceMotion ? 1 : Math.floor(t / 300) % 2;
         for (var d = 0; d < 16; d++) {
           if ((d + blink) % 3 === 0) continue;
@@ -274,11 +317,11 @@
       drawCloud(ctx, ((drift + 20) % (W + 40)) - 30, 4, stormy);
       drawCloud(ctx, ((drift * 0.6 + 100) % (W + 40)) - 30, 12, stormy);
       if (view.weather === 'flood') drawCloud(ctx, ((drift * 0.8 + 60) % (W + 40)) - 30, 1, true);
-      drawHills(ctx);
+      drawMountains(ctx);
       drawGround(ctx, view.season);
+      drawRiver(ctx, t, view.season);
       drawSign(ctx);
       drawPalm(ctx, t);
-      drawPond(ctx, t, view.weather === 'drought');
       view.plots.forEach(function (p, i) { drawPlot(ctx, i, p || {}, t, view); });
       drawWeather(ctx, view, t);
       drawSparkles(ctx, view, t);

@@ -23,7 +23,7 @@
   var coachQueue = [], coachLines = [], coachKey = null;
   var shownMoney = 0;
 
-  var USES = ['rice', 'corn', 'shallot', 'fallow', 'idle'];
+  var USES = ['rice', 'corn', 'shallot', 'waterspinach', 'kale', 'dill', 'fallow', 'idle'];
   var SEASON_SHORT = { rain: 'ฝน', cool: 'หนาว', hot: 'ร้อน' };
   var RANKS = ['ชาวไร่ฝึกหัด', 'ชาวไร่มือใหม่', 'ชาวไร่มืออาชีพ', 'เกษตรกรมหัศจรรย์'];
   var END_MSG = [
@@ -160,6 +160,8 @@
         if (p.event) v.event = { type: MF.EVENTS[p.event.id].type, sprite: MF.EVENTS[p.event.id].sprite };
         v.dry = weather === 'drought' && !state.weather.respond && E.isCrop(p.use);
         if (weather === 'flood') v.flooded = state.weather.respond ? 0.15 : Math.min(0.85, 0.35 * MF.PLOTS[i].floodMult + 0.2);
+        var rise = MF.PLOTS[i].riverRise && MF.PLOTS[i].riverRise[sid];
+        if (rise && E.isCrop(p.use)) v.flooded = Math.max(v.flooded || 0, rise);
       }
       if (stage === 'harvest' && state.results) {
         var r = state.results.plots[i];
@@ -307,10 +309,11 @@
       var crop = MF.CROPS[r.use];
       html += '<div class="r-plot"><div class="r-line">' + plotNum(i) + '<span class="r-icon">' + useIcon(r.use, 3) + '</span>' +
         '<span class="r-name"><b>' + esc(useName(r.use)) + '</b>' +
-        (crop ? '<small class="num">' + fmt(r.kg) + ' กก. × ' + crop.price + ' บาท</small>' : '<small>ไม่มีผลผลิตขาย</small>') + '</span>' +
+        (crop ? '<small class="num">' + fmt(r.kg) + ' กก. × ' + (r.price || crop.price) + ' บาท</small>' +
+          (r.safe ? '<span class="safe-tag">ผักปลอดภัย</span>' : '') : '<small>ไม่มีผลผลิตขาย</small>') + '</span>' +
         '<span class="r-amt num big">' + (crop ? fmt(r.revenue) : '-') + '</span></div>';
       if (r.tips.length) {
-        html += '<ul class="tips">' + r.tips.slice(0, 3).map(function (t) { return '<li class="tip-' + t.tone + '">' + esc(t.text) + '</li>'; }).join('') + '</ul>';
+        html += '<ul class="tips">' + r.tips.slice(0, 4).map(function (t) { return '<li class="tip-' + t.tone + '">' + esc(t.text) + '</li>'; }).join('') + '</ul>';
       }
       html += '</div>';
     });
@@ -406,7 +409,7 @@
         '</button>';
     });
     html += '</div>';
-    var note = crop ? crop.note + ' · ขาย ' + crop.price + ' บาท/กก.' : MF.LAND_USES[d.use].note;
+    var note = crop ? crop.note + ' · ขาย ' + crop.price + ' บาท/กก.' + (crop.veg ? ' ถ้าไม่ใช้ยาเคมี ขายเป็นผักปลอดภัยได้เพิ่ม ' + Math.round(MF.CONFIG.safeVegBonus * 100) + '%' : '') : MF.LAND_USES[d.use].note;
     html += '<p class="crop-note">' + esc(note) + '</p>';
 
     if (crop) {
@@ -474,10 +477,11 @@
         return '<li><span class="howto-icon">' + S.img(r[0], r[0] === 'coin' || r[0] === 'star' ? 4 : 3) + '</span><div><b>' + r[1] + '</b><p>' + r[2] + '</p></div></li>';
       }).join('') + '</ol>' +
       '<div class="howto-tips"><b>เคล็ดลับจากลุงพันธ์</b><ul>' +
-      '<li>ข้าวชอบฤดูฝน หอมแดงชอบฤดูหนาว ข้าวโพดปลูกได้ทั้งฝนและหนาว</li>' +
-      '<li>แปลงที่ลุ่มเสี่ยงน้ำท่วม แปลงที่ดอนเสี่ยงแล้ง แปลงติดสระสูบน้ำได้ถูก</li>' +
+      '<li>ข้าวและผักบุ้งชอบฤดูฝน หอมแดง คะน้า ผักชีลาวชอบฤดูหนาว ข้าวโพดปลูกได้ทั้งฝนและหนาว</li>' +
+      '<li>แปลงที่ลุ่มเสี่ยงน้ำท่วม แปลงที่ดอนเสี่ยงแล้ง แปลงริมโขงดินดี สูบน้ำได้ถูก แต่หน้าฝนน้ำโขงขึ้น</li>' +
+      '<li>ผักกินใบที่ไม่ใช้ยาเคมี หรือใช้เชื้อบีที ขายเป็นผักปลอดภัย ได้ราคาเพิ่ม ' + Math.round(MF.CONFIG.safeVegBonus * 100) + '%</li>' +
       '<li>ปลูกพืชเดิมซ้ำแปลงเดิม โรคและแมลงจะมากขึ้น ใส่ไนโตรเจนมากไปก็เช่นกัน</li>' +
-      '<li>ฤดูร้อนน้ำน้อย ทุกพืชได้ผลผลิตต่ำ แปลงติดสระสูบน้ำได้ถูกกว่า</li>' +
+      '<li>ฤดูร้อนน้ำน้อย ทุกพืชได้ผลผลิตต่ำ แปลงริมโขงสูบน้ำได้ถูกกว่า</li>' +
       '</ul></div>';
   }
 
@@ -548,13 +552,13 @@
     }
     var best = store.get(KEYS.best, []);
     $('best-line').innerHTML = best.length
-      ? '<span>สถิติสูงสุด</span> <b class="num big">' + fmt(best[0].money) + ' บาท</b> ' + starRow(best[0].stars, 3, 2)
+      ? '<span>สถิติสูงสุด</span> <b class="num big">' + fmt(best[0].money) + ' บาท</b> ' + starRow(E.stars(best[0].money), 3, 2)
       : '<span>ยังไม่มีสถิติ เริ่มเล่นรอบแรกได้เลย</span>';
     titleScene.setView({
       season: 'cool',
       weather: null,
       ambientSparkles: true,
-      plots: [{ use: 'rice', phase: 2 }, { use: 'corn', phase: 2 }, { use: 'shallot', phase: 2 }, { use: 'fallow', phase: 2 }],
+      plots: [{ use: 'rice', phase: 2 }, { use: 'corn', phase: 2 }, { use: 'shallot', phase: 2 }, { use: 'kale', phase: 2 }],
       selected: null,
     });
     show('title');
@@ -654,16 +658,16 @@
       '<p class="end-msg">' + esc(bankrupt ? 'เงินเหลือไม่พอซื้อเมล็ดพันธุ์ฤดูต่อไป ลองวางแผนปุ๋ยและยาให้คุ้มค่ากว่านี้ แล้วกลับมาใหม่นะ' : END_MSG[stars]) + '</p>';
     if (state.history.length) html += '<section class="card chart-card"><h2>เงินในมือหลังเก็บเกี่ยว</h2>' + moneyChart() + '</section>';
     html += '<section class="card stats-card"><h2>สถิติรอบนี้</h2><dl class="stats">' +
-      '<div><dt>' + S.img('rice2', 2) + ' ข้าว</dt><dd class="num">' + fmt(st.kg.rice) + ' กก.</dd></div>' +
-      '<div><dt>' + S.img('corn2', 2) + ' ข้าวโพด</dt><dd class="num">' + fmt(st.kg.corn) + ' กก.</dd></div>' +
-      '<div><dt>' + S.img('shallot2', 2) + ' หอมแดง</dt><dd class="num">' + fmt(st.kg.shallot) + ' กก.</dd></div>' +
+      Object.keys(MF.CROPS).filter(function (k) { return st.kg[k] > 0; }).map(function (k) {
+        return '<div><dt>' + S.img(k + '2', 2) + ' ' + esc(MF.CROPS[k].name) + '</dt><dd class="num">' + fmt(st.kg[k]) + ' กก.</dd></div>';
+      }).join('') +
       '<div><dt>เลือกยาถูกต้อง</dt><dd class="num">' + st.correct + ' / ' + st.treated + ' ครั้ง</dd></div>' +
       '<div><dt>รายได้รวม</dt><dd class="num">' + fmt(st.revenue) + '</dd></div>' +
       '<div><dt>ต้นทุนรวม</dt><dd class="num">' + fmt(st.cost) + '</dd></div>' +
       '</dl></section>';
     html += '<section class="card best-card"><h2>สถิติสูงสุดในเครื่องนี้</h2><ol class="best-list">' + best.map(function (b) {
       var mine = b === entry;
-      return '<li class="' + (mine ? 'mine' : '') + '"><span class="num big">' + fmt(b.money) + '</span>' + starRow(b.stars, 3, 2) + '<small>' + esc(b.date) + (mine ? ' · รอบนี้' : '') + '</small></li>';
+      return '<li class="' + (mine ? 'mine' : '') + '"><span class="num big">' + fmt(b.money) + '</span>' + starRow(E.stars(b.money), 3, 2) + '<small>' + esc(b.date) + (mine ? ' · รอบนี้' : '') + '</small></li>';
     }).join('') + '</ol></section>';
     html += '<div class="end-actions"><button class="btn btn-primary" data-action="new-game">เล่นอีกครั้ง</button><button class="btn" data-action="go-title">หน้าหลัก</button></div>' +
       '<div class="end-credit"><span>The Magic Farmcare นำเสนอโดย</span><img src="' + $('brand-img').src + '" width="76" height="80" alt="ธนาพันธ์ ฟาร์มแคร์"></div></div>';

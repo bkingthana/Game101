@@ -6,13 +6,14 @@
   MF.CONFIG = {
     startMoney: 20000,
     years: 1,
-    stars: [40000, 50000, 60000],
+    stars: [45000, 55000, 65000],
     minMoneyToContinue: 1000,
     forecastAccuracy: 0.7,
     naturalRecovery: 3,
     offStageEfficiency: 0.6, // fertilizer used outside its best timing
     excessNRatio: 1.5, // N above need x 1.5 = too much
     yieldJitter: 0.07,
+    safeVegBonus: 0.15, // leafy vegetables grown without chemical sprays sell for 15% more
   };
 
   MF.SEASONS = [
@@ -72,6 +73,31 @@
       events: ['thrips', 'beetarmy', 'purple'],
       note: 'ชอบอากาศเย็น ต้องการโพแทสเซียมสูง ลงทุนมาก กำไรมาก เน่าง่ายถ้าฝนชุก',
     },
+    /* leafy vegetables (veg: true) can sell as safe vegetables for a premium */
+    waterspinach: {
+      name: 'ผักบุ้ง', seedCost: 500, baseYield: 900, price: 5.5, veg: true,
+      suit: { rain: 1, cool: 0.9, hot: 0.7 },
+      need: { N: 60, P: 25, K: 25 }, uptake: { N: 25, P: 8, K: 10 },
+      drought: 0.5, flood: 0.05,
+      events: ['cutworm', 'whiterust'],
+      note: 'ปลูกได้ทั้งปี ทนน้ำขัง ต้นทุนต่ำ กำไรน้อยแต่ปลอดภัย ไม่ทนแล้ง ต้องมีน้ำ',
+    },
+    kale: {
+      name: 'คะน้า', seedCost: 900, baseYield: 600, price: 12, veg: true,
+      suit: { rain: 0.55, cool: 1, hot: 0.45 },
+      need: { N: 75, P: 30, K: 35 }, uptake: { N: 30, P: 10, K: 12 },
+      drought: 0.45, flood: 0.6,
+      events: ['dbm', 'aphid', 'kaledowny'],
+      note: 'ชอบอากาศเย็น กินปุ๋ยไนโตรเจนมาก ฝนชุกเสียหาย ระวังหนอนใยผัก',
+    },
+    dill: {
+      name: 'ผักชีลาว', seedCost: 1200, baseYield: 330, price: 28, veg: true,
+      suit: { rain: 0.4, cool: 1, hot: 0.35 },
+      need: { N: 55, P: 30, K: 35 }, uptake: { N: 20, P: 8, K: 12 },
+      drought: 0.4, flood: 0.8,
+      events: ['aphid', 'rootrot'],
+      note: 'ผักที่คนอีสานนิยม ราคาดี ชอบอากาศเย็น ไม่ทนน้ำขังและความชื้น เสี่ยงสูง กำไรสูง',
+    },
   };
 
   MF.LAND_USES = {
@@ -118,7 +144,8 @@
   /* loss = share of yield lost if nothing is done.
      correct: products that work (90%). partial: {id: effectiveness}. harmful: {id: extra crop loss}.
      A product with distractor: false is only offered where an event lists it, never as a random wrong
-     answer, because it may genuinely work on pests this table does not model it for. */
+     answer, because it may genuinely work on pests this table does not model it for.
+     notWrong: products that are never offered as a wrong answer for that one event, for the same reason. */
   MF.EVENTS = {
     bph: {
       crop: 'rice', type: 'insect', sprite: 'bug', name: 'เพลี้ยกระโดดสีน้ำตาล',
@@ -174,6 +201,42 @@
       loss: 0.4, correct: ['difenoconazole'], partial: { mancozeb: 0.4 }, harmful: {},
       tip: 'โรคใบจุดสีม่วงเกิดจากเชื้อรา แมนโคเซบใช้ป้องกันก่อนเกิดโรค ถ้าเป็นแล้วต้องใช้ไดฟีโนโคนาโซลที่ทั้งป้องกันและรักษาได้ แม้ราคาจะสูงกว่า',
     },
+    cutworm: {
+      crop: 'waterspinach', type: 'insect', sprite: 'worm', name: 'หนอนกระทู้ผัก',
+      symptom: 'ใบถูกกัดกินจนเป็นรูพรุน หนอนออกกินตอนกลางคืน กลางวันหลบอยู่ใต้ดินโคนต้น',
+      loss: 0.4, correct: ['bt', 'emamectin'], partial: { cypermethrin: 0.3 }, harmful: {},
+      tip: 'หนอนกระทู้ผักออกกินตอนกลางคืน ใช้เชื้อบีทีหรืออีมาเมกตินเบนโซเอต ฉีดพ่นช่วงเย็น',
+    },
+    whiterust: {
+      crop: 'waterspinach', type: 'disease', sprite: 'leafRust', name: 'โรคราสนิมขาว',
+      symptom: 'ใต้ใบมีจุดนูนสีขาวคล้ายผงแป้ง ด้านบนใบเป็นจุดสีเหลือง ใบบิดเบี้ยว',
+      loss: 0.35, correct: ['metalaxyl'], partial: { mancozeb: 0.4 }, harmful: {},
+      tip: 'ราสนิมขาวระบาดตอนอากาศชื้น ใช้เมทาแลกซิล ส่วนแมนโคเซบใช้ป้องกันก่อนเกิดโรค',
+    },
+    dbm: {
+      crop: 'kale', type: 'insect', sprite: 'worm', name: 'หนอนใยผัก',
+      symptom: 'หนอนตัวเล็กสีเขียวกินผิวใบจนเป็นรูโปร่งแสง ถูกตัวแล้วดิ้นทิ้งตัวลงด้วยเส้นใย',
+      loss: 0.5, correct: ['bt', 'spinetoram', 'emamectin'], partial: { cypermethrin: 0.1 }, harmful: {},
+      tip: 'หนอนใยผักดื้อยาเร็วมาก ใช้เชื้อบีที สไปนีโทแรม หรืออีมาเมกตินเบนโซเอต สลับกลุ่มกัน และไม่ควรใช้ไซเปอร์เมทริน',
+    },
+    aphid: {
+      crop: 'kale', type: 'insect', sprite: 'bug', name: 'เพลี้ยอ่อน',
+      symptom: 'แมลงตัวเล็กสีเขียวอ่อนเกาะกลุ่มใต้ใบและยอดอ่อน ดูดน้ำเลี้ยงจนใบหงิกงอ',
+      loss: 0.3, correct: ['imidacloprid'], partial: {}, harmful: {}, notWrong: ['pymetrozine', 'cypermethrin'],
+      tip: 'เพลี้ยอ่อนเป็นแมลงปากดูด ใช้ยาดูดซึมอย่างอิมิดาโคลพริด',
+    },
+    kaledowny: {
+      crop: 'kale', type: 'disease', sprite: 'leafDowny', name: 'โรคราน้ำค้างคะน้า',
+      symptom: 'ใบมีจุดเหลืองเป็นเหลี่ยม ใต้ใบมีขุยราสีขาวเทาตอนเช้า ระบาดตอนอากาศเย็นและชื้น',
+      loss: 0.4, correct: ['metalaxyl'], partial: { mancozeb: 0.4 }, harmful: {},
+      tip: 'ราน้ำค้างใช้เมทาแลกซิล ส่วนแมนโคเซบใช้ป้องกันก่อนเกิดโรค',
+    },
+    rootrot: {
+      crop: 'dill', type: 'disease', sprite: 'leafRot', name: 'โรคโคนเน่า',
+      symptom: 'โคนต้นเน่าเป็นสีน้ำตาลฉ่ำน้ำ ต้นเหี่ยวและล้มตาย เกิดมากเมื่อดินแฉะ น้ำขัง',
+      loss: 0.45, correct: ['metalaxyl'], partial: {}, harmful: {}, notWrong: ['mancozeb'],
+      tip: 'โรคโคนเน่าเกิดจากเชื้อราในดินที่ชอบน้ำขัง ใช้เมทาแลกซิล และยกร่องให้น้ำระบายดี',
+    },
   };
 
   /* Four plots with different soil and terrain. */
@@ -181,7 +244,7 @@
     { name: 'แปลง 1', terrain: 'ที่ลุ่ม ดินเหนียว', note: 'อุ้มน้ำดี เสี่ยงน้ำท่วม', soil: { N: 50, P: 30, K: 45 }, droughtMult: 0.8, floodMult: 1.4, irrigateCost: 400 },
     { name: 'แปลง 2', terrain: 'ที่ดอน ดินร่วนปนทราย', note: 'น้ำไม่ขัง แต่แห้งเร็ว', soil: { N: 35, P: 40, K: 30 }, droughtMult: 1.3, floodMult: 0.3, irrigateCost: 400 },
     { name: 'แปลง 3', terrain: 'ดินร่วน', note: 'ดินดี ปลูกได้หลากหลาย', soil: { N: 45, P: 40, K: 45 }, droughtMult: 1, floodMult: 1, irrigateCost: 400 },
-    { name: 'แปลง 4', terrain: 'ดินทราย ติดสระน้ำ', note: 'ดินจืด แต่มีน้ำใช้ตลอดปี', soil: { N: 25, P: 25, K: 25 }, droughtMult: 0.3, floodMult: 0.8, irrigateCost: 150 },
+    { name: 'แปลง 4', terrain: 'ริมโขง ดินตะกอน', note: 'ดินตะกอนอุดมสมบูรณ์ สูบน้ำโขงได้ถูก แต่หน้าฝนน้ำโขงขึ้นท่วมพืชที่ไม่ทนน้ำ', soil: { N: 40, P: 35, K: 40 }, droughtMult: 0.3, floodMult: 1.5, irrigateCost: 150, riverRise: { rain: 0.4 } },
   ];
 
   MF.NUTRIENT_NAMES = { N: 'ไนโตรเจน', P: 'ฟอสฟอรัส', K: 'โพแทสเซียม' };
@@ -194,7 +257,8 @@
     welcome: [
       'สวัสดีครับ ผมลุงพันธ์ จากธนาพันธ์ ฟาร์มแคร์ ยินดีต้อนรับสู่ไร่ของคุณ',
       'คุณมีทุน ' + money(MF.CONFIG.startMoney) + ' บาท และเวลา 1 ปี (3 ฤดู) ทำเงินให้ถึง ' + MF.CONFIG.stars.map(money).join(' / ') + ' บาท เพื่อรับดาว 1-3 ดวง',
-      'แต่ละฤดูมี 3 ช่วง: เตรียมปลูก, ดูแล, เก็บเกี่ยว ตอนนี้เป็นฤดูฝน เหมาะกับข้าวและข้าวโพด',
+      'แต่ละฤดูมี 3 ช่วง: เตรียมปลูก, ดูแล, เก็บเกี่ยว ตอนนี้เป็นฤดูฝน เหมาะกับข้าว ข้าวโพด และผักบุ้ง',
+      'แปลง 4 อยู่ริมแม่น้ำโขง ดินตะกอนดี สูบน้ำได้ถูก แต่หน้าฝนน้ำโขงขึ้น พืชที่ไม่ทนน้ำจะเสียหาย',
       'แตะที่แปลงเพื่อเลือกพืชและปุ๋ยรองพื้น อย่าลืมดูพยากรณ์อากาศด้านบนก่อนตัดสินใจ',
     ],
     plotSheet: [
@@ -206,7 +270,10 @@
       'ช่วงนี้ใส่ปุ๋ยแต่งหน้าได้อีก 1 ครั้งต่อแปลง เช่น 46-0-0 เร่งต้น หรือ 0-0-60 เพิ่มน้ำหนัก แต่อย่าใส่ไนโตรเจนมากเกินไป พืชจะอ่อนแอ',
     ],
     harvest: ['นี่คือผลผลิตของฤดูนี้ ลุงสรุปไว้ให้ว่าอะไรทำให้ผลผลิตลดลง เอาไปปรับใช้ฤดูหน้านะครับ'],
-    cool: ['ฤดูหนาวมาแล้ว หอมแดงชอบอากาศเย็น ลงทุนสูงแต่กำไรดี ส่วนข้าวโพดก็ปลูกหลังนาได้'],
-    hot: ['ฤดูร้อนเป็นฤดูสุดท้าย น้ำน้อย แดดจัด ทุกพืชได้ผลผลิตต่ำ ถ้าจะปลูก แปลงติดสระสูบน้ำได้ถูกกว่า แปลงที่ไม่คุ้มก็ปล่อยว่างประหยัดทุนได้'],
+    cool: [
+      'ฤดูหนาวมาแล้ว หอมแดง คะน้า และผักชีลาวชอบอากาศเย็น ส่วนข้าวโพดก็ปลูกหลังนาได้',
+      'ผักกินใบ ถ้าไม่ใช้ยาเคมี หรือใช้เชื้อบีที จะขายเป็นผักปลอดภัย ได้ราคาเพิ่ม 15%',
+    ],
+    hot: ['ฤดูร้อนเป็นฤดูสุดท้าย น้ำน้อย แดดจัด ทุกพืชได้ผลผลิตต่ำ ถ้าจะปลูก แปลงริมโขงสูบน้ำได้ถูกกว่า แปลงที่ไม่คุ้มก็ปล่อยว่างประหยัดทุนได้'],
   };
 })(typeof window !== 'undefined' ? window : globalThis);

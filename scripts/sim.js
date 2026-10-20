@@ -30,25 +30,63 @@ function bestTop(plot, use) {
 // a working product among the four shown for this pest
 function correctFor(ev) { var ok = MF.EVENTS[ev.id].correct; return ev.options.filter(function (p) { return ok.indexOf(p) >= 0; })[0]; }
 
+// expected weather mix given the forecast and its accuracy
+function weatherProbs(s) {
+  var season = E.seasonOf(s).season, f = s.weather.forecast, acc = MF.CONFIG.forecastAccuracy;
+  var others = season.weather.filter(function (w) { return w[0] !== f; });
+  var tot = others.reduce(function (a, w) { return a + w[1]; }, 0);
+  var probs = {};
+  probs[f] = others.length ? acc : 1;
+  others.forEach(function (w) { probs[w[0]] = ((1 - acc) * w[1]) / tot; });
+  return probs;
+}
+
+// rough expected profit of a crop on a plot this season, for a player who fertilizes and treats well
+function expectedProfit(s, i, use) {
+  var crop = MF.CROPS[use], info = MF.PLOTS[i], sid = E.seasonOf(s).season.id, pr = weatherProbs(s);
+  var wl = (pr.drought || 0) * crop.drought * info.droughtMult * 0.15 + (pr.flood || 0) * crop.flood * info.floodMult * 0.25;
+  var water = (pr.drought || 0) * info.irrigateCost + (pr.flood || 0) * 400;
+  var river = crop.flood * ((info.riverRise && info.riverRise[sid]) || 0);
+  var price = crop.price * (crop.veg ? 1 + MF.CONFIG.safeVegBonus * 0.6 : 1);
+  var rev = crop.baseYield * crop.suit[sid] * (1 - wl) * (1 - river) * 0.98 * price;
+  return rev - crop.seedCost - 1000 - water - 180;
+}
+
+function planBest(s, crops) {
+  var picks = s.plots.map(function (p, i) {
+    var ranked = crops.map(function (u) { return { use: u, v: expectedProfit(s, i, u) }; })
+      .sort(function (a, b) { return b.v - a.v; });
+    return { i: i, ranked: ranked };
+  }).sort(function (a, b) { return b.ranked[0].v - a.ranked[0].v; });
+  picks.forEach(function (pk) {
+    var p = s.plots[pk.i];
+    E.setPlan(s, pk.i, 'idle', null);
+    for (var k = 0; k < pk.ranked.length; k++) {
+      var c = pk.ranked[k];
+      if (c.v < 200) break;
+      E.setPlan(s, pk.i, c.use, bestBasal(p, c.use));
+      if (E.planCost(s) <= s.money - 1500) return;
+      E.setPlan(s, pk.i, 'idle', null);
+    }
+  });
+}
+
+var ALL_CROPS = Object.keys(MF.CROPS);
+var GRAINS = ['rice', 'corn', 'shallot'];
+
 var strategies = {
+  // picks the most profitable crop for each plot from every crop in the game
   expert: {
-    plan: function (s) {
-      var season = E.seasonOf(s).season.id;
-      s.plots.forEach(function (p, i) {
-        var use;
-        if (season === 'rain') use = i === 0 || s.weather.forecast === 'flood' ? 'rice' : 'corn';
-        else if (season === 'cool') use = s.money - E.planCost(s) > 8000 ? 'shallot' : 'corn';
-        else use = i === 3 ? 'corn' : 'idle'; // last season: only the pond plot pays for its water
-        if (p.lastUse === use && use !== 'fallow' && season !== 'cool') use = use === 'rice' ? 'corn' : 'rice';
-        E.setPlan(s, i, use, E.isCrop(use) ? bestBasal(p, use) : null);
-        if (E.planCost(s) > s.money - 1500) E.setPlan(s, i, 'fallow', null);
-      });
-    },
+    plan: function (s) { planBest(s, ALL_CROPS); },
     care: function (s) {
       if (E.weatherResponse(s)) E.setResponse(s, true);
       s.plots.forEach(function (p, i) {
         if (!E.isCrop(p.use)) return;
-        if (p.event) E.setTreatment(s, i, correctFor(p.event));
+        if (p.event) {
+          var ok = MF.EVENTS[p.event.id].correct;
+          var bio = p.event.options.filter(function (x) { return ok.indexOf(x) >= 0 && MF.PRODUCTS[x].group === 'bio'; })[0];
+          E.setTreatment(s, i, MF.CROPS[p.use].veg && bio ? bio : correctFor(p.event));
+        }
         E.setTop(s, i, bestTop(p, p.use));
       });
       while (E.careCost(s) > s.money) {
@@ -58,6 +96,11 @@ var strategies = {
       }
       if (E.careCost(s) > s.money) E.setResponse(s, false);
     },
+  },
+  // same skill, but only grows rice, corn and shallot (the game before vegetables)
+  grains: {
+    plan: function (s) { planBest(s, GRAINS); },
+    care: function (s) { strategies.expert.care(s); },
   },
   // knows the seasons but sometimes picks the wrong chemical and skips top-dressing
   decent: {
