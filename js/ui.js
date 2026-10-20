@@ -580,14 +580,6 @@
     $('best-line').innerHTML = best.length
       ? '<span>สถิติสูงสุด</span> <b class="num big">' + fmt(best[0].money) + ' บาท</b> ' + starRow(E.stars(best[0].money), 3, 2)
       : '<span>ยังไม่มีสถิติ เริ่มเล่นรอบแรกได้เลย</span>';
-    titleScene.setView({
-      season: 'cool',
-      time: 'dawn', // sunrise over the Mekong
-      weather: null,
-      ambientSparkles: true,
-      plots: [{ use: 'rice', phase: 2 }, { use: 'corn', phase: 2 }, { use: 'shallot', phase: 2 }, { use: 'kale', phase: 2 }],
-      selected: null,
-    });
     show('title');
   }
 
@@ -987,7 +979,7 @@
     $('coach-face').innerHTML = S.img('lung', 4);
     scene = MF.createScene($('scene'));
     scene.onTap(function (i) { if (state && state.stage === 'plan') openPlot(i); });
-    titleScene = MF.createScene($('title-canvas'));
+    titleScene = MF.createCover($('title-canvas')); // the title has its own picture, not the farm
     scene.onThatPhanom(thatPhanom);
     titleScene.onThatPhanom(thatPhanom);
     bind();

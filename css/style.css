@@ -127,6 +127,8 @@ img.px { image-rendering: crisp-edges; image-rendering: pixelated; display: bloc
 .brand { display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .brand-img { display: block; width: 99px; height: auto; }
 .brand-presents { color: var(--on-frame-soft); font: 500 11px/1 var(--font-pixel); letter-spacing: 0.32em; }
+/* the cover picture (js/cover.js) is 160 x 120, taller than the farm scene */
+.title-scene .px-canvas { aspect-ratio: 160 / 120; background: #0e1433; }
 .game-title { margin: 4px 0 0; font-family: var(--font-pixel); font-weight: 700; line-height: 0.95; }
 .gt-small { display: block; font-size: 26px; color: var(--on-frame); letter-spacing: 0.06em; }
 .gt-big {
@@ -578,7 +580,7 @@ a.btn { display: grid; place-items: center; text-align: center; text-decoration:
 
   /* title and end: one centered column */
   .title-screen { padding-inline: max(0px, calc((100% - 640px) / 2)); }
-  .title-scene { width: min(100%, max(360px, calc((100vh - var(--safe-y) - 600px) * 1.6))); width: min(100%, max(360px, calc((100dvh - var(--safe-y) - 600px) * 1.6))); margin-inline: auto; }
+  .title-scene { width: min(100%, max(340px, calc((100vh - var(--safe-y) - 600px) * 4 / 3))); width: min(100%, max(340px, calc((100dvh - var(--safe-y) - 600px) * 4 / 3))); margin-inline: auto; }
   .title-actions { width: min(100%, 440px); margin-inline: auto; }
   .end-wrap { max-width: 720px; margin-inline: auto; padding-block: 32px 36px; }
 
@@ -684,7 +686,7 @@ a.btn { display: grid; place-items: center; text-align: center; text-decoration:
     padding-inline: max(0px, calc((100% - 1100px) / 2));
   }
   .brand { grid-area: brand; }
-  .title-scene { grid-area: scene; align-self: center; width: 100%; }
+  .title-scene { grid-area: scene; align-self: center; justify-self: center; width: min(100%, calc((100vh - var(--safe-y) - 40px) * 4 / 3)); width: min(100%, calc((100dvh - var(--safe-y) - 40px) * 4 / 3)); }
   .game-title { grid-area: title; }
   .gt-big { font-size: clamp(48px, 7.8vw, 76px); } /* "Farmcare" is about 4.9em wide and must fit the right column */
   .tagline { grid-area: tag; }

@@ -135,6 +135,28 @@
     wilt: ['..........', '...YY.....', '..Y..Y....', '.Y....b...', '......b...', '.....b.YY.', '....b...Y.', '....b....Y', '....b.....', '...SSSS...', '..SBSSBS..', '.SSSBSSSS.'],
     sproutPot: ['..ll....ll..', '.llll..llll.', '.lllgllglll.', '..llggggll..', '.....gg.....', '.....gG.....', '..kkkkkkkk..',
       '..kbbbbbbk..', '...kbbbbk...', '...kbSSbk...', '....kkkk....'],
+
+    /* title cover: Lung Phan seen from the side, facing left, tipping his watering can, 14 x 19 */
+    lungCover: [
+      '.......yy.....',
+      '.....yyYYyy...',
+      '...yyyyyyyyyy.',
+      '..YYYYYYYYYYYY',
+      '......nnnhh...',
+      '.....nknnhhh..',
+      '.....nnnnhh...',
+      '......nnnn....',
+      '......gggGg...',
+      '.....ggggGgg..',
+      '...nnggggGgg..',
+      '..WeenggggGg..',
+      '.eWeeeegggGg..',
+      'e..eee.ggggG..',
+      '.......GGGGG..',
+      '.......CC.CC..',
+      '.......CC..C..',
+      '.......CC..C..',
+      '......hhh.hh..'],
   };
   // right-facing copies
   ['buffaloGraze', 'buffaloUp'].forEach(function (n) {
