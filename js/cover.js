@@ -243,6 +243,18 @@
     return list.sort(function (a, b) { return a.sort - b.sort || a.x - b.x; }); // back to front, once
   }
 
+  // draw the plot and everything on it back to front; a gust of wind runs across the crops
+  function drawPlot(ctx, t, L, dy) {
+    ctx.drawImage(L.plot, 0, dy);
+    L.things.forEach(function (o) {
+      var x = Math.round(o.x), y = Math.round(o.y) + dy;
+      var gust = !reduceMotion && Math.sin(t / 700 - (o.p + o.q) * 5) > 0.55 ? 1 : 0;
+      if (o.kind === 'veg') ctx.drawImage(L.veg[gust], x - 3, y - 4);
+      else if (o.kind === 'rice') ctx.drawImage(L.rice[gust], x - 3, y - 6);
+      else ctx.drawImage(L[o.kind].img, x - L[o.kind].ox, y - L[o.kind].oy);
+    });
+  }
+
   function build() {
     var L = {
       sky: canvas(W, H), plot: canvas(W, H), veg: [sprite(VEG, CROP_PAL), sprite(lean(VEG, 2), CROP_PAL)],
