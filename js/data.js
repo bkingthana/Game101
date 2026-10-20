@@ -14,6 +14,9 @@
     excessNRatio: 1.5, // N above need x 1.5 = too much
     yieldJitter: 0.07,
     safeVegBonus: 0.15, // leafy vegetables grown without chemical sprays sell for 15% more
+    shareUrl: 'https://the-magic-farmcare.vercel.app', // the public link put on share cards
+    // shop contact shown on the end screen; the card stays hidden until at least one is filled in
+    contact: { line: '', phone: '', map: '' },
   };
 
   MF.SEASONS = [

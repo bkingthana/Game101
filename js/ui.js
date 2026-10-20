@@ -597,6 +597,7 @@
     state = E.newGame((Date.now() ^ Math.floor(Math.random() * 1e9)) >>> 0);
     saveGame();
     enterGame();
+    track('game_start');
   }
 
   function continueGame() {
@@ -652,6 +653,7 @@
     store.set(KEYS.best, best);
     store.del(KEYS.save);
     renderEnd(entry, best);
+    track('game_end', { stars: stars, bankrupt: !!state.over });
     show('end');
     sfx(stars >= 2 ? 'fanfare' : stars === 1 ? 'good' : 'bad');
   }
@@ -685,7 +687,9 @@
       '<div class="end-stars">' + [0, 1, 2].map(function (i) { return '<span class="end-star" style="--d:' + i * 0.35 + 's">' + S.img(i < stars ? 'star' : 'starOff', 6) + '</span>'; }).join('') + '</div>' +
       '<div class="end-money"><small>เงินสุดท้าย</small><b class="num big">' + fmt(state.money) + '</b><small>บาท</small></div>' +
       '<div class="end-coach">' + S.img('lung', 4) + '<p><b>ลุงพันธ์</b>' +
-      esc(bankrupt ? 'เงินเหลือไม่พอซื้อเมล็ดพันธุ์ฤดูต่อไป ลองวางแผนปุ๋ยและยาให้คุ้มค่ากว่านี้ แล้วกลับมาใหม่นะ' : END_MSG[stars]) + '</p></div>';
+      esc(bankrupt ? 'เงินเหลือไม่พอซื้อเมล็ดพันธุ์ฤดูต่อไป ลองวางแผนปุ๋ยและยาให้คุ้มค่ากว่านี้ แล้วกลับมาใหม่นะ' : END_MSG[stars]) + '</p></div>' +
+      '<div class="end-share"><button class="btn btn-primary" data-action="share-card">แชร์รูปผลคะแนน<small>ส่งให้เพื่อนใน LINE หรือโพสต์ Facebook</small></button>' +
+      '<button class="btn btn-line" data-action="share-line">ชวนเพื่อนเล่นทาง LINE</button></div>' + contactHtml();
     if (state.history.length) html += '<section class="card chart-card"><h2>เงินในมือหลังเก็บเกี่ยว</h2>' + moneyChart() + '</section>';
     html += '<section class="card stats-card"><h2>สถิติรอบนี้</h2><dl class="stats">' +
       Object.keys(MF.CROPS).filter(function (k) { return st.kg[k] > 0; }).map(function (k) {
@@ -704,14 +708,91 @@
     $('screen-end').innerHTML = html;
     var fx = $('screen-end').querySelector('.end-fx');
     if (fx) fireworks(fx);
+    prepareShare(entry, stars, bankrupt);
+  }
+
+  /* ---------- sharing ---------- */
+
+  // the card is drawn as soon as the end screen opens, so the share sheet can open straight from the tap
+  var shareInfo = null;
+  function prepareShare(entry, stars, bankrupt) {
+    var url = MF.CONFIG.shareUrl;
+    shareInfo = {
+      blob: null,
+      text: bankrupt
+        ? 'ปลูกพืชใน The Magic Farmcare ปีนี้เงินทุนหมดก่อนครบปี ใครเก่งกว่ามาลองดู ' + url
+        : 'ได้ยศ ' + RANKS[stars] + ' ' + stars + ' ดาว เงิน ' + fmt(entry.money) + ' บาท ในเกม The Magic Farmcare ของธนาพันธ์ ฟาร์มแคร์ มาแข่งกันที่ ' + url,
+    };
+    var info = shareInfo;
+    if (!MF.share) return;
+    MF.share.resultCard({
+      rank: bankrupt ? 'ล้มละลาย' : RANKS[stars], stars: stars, money: entry.money, bankrupt: bankrupt,
+      badge: bankrupt ? null : badgeSprite(stars),
+    }).then(MF.share.toBlob).then(function (b) { info.blob = b; }).catch(function () {});
+  }
+
+  function shareCard() {
+    var info = shareInfo;
+    if (!info || !info.blob) { toast('กำลังเตรียมรูป ลองกดอีกครั้ง'); return; }
+    track('share', { via: 'card' });
+    var file = null;
+    try { file = new File([info.blob], 'the-magic-farmcare.png', { type: 'image/png' }); } catch (e) { /* old browsers */ }
+    if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+      navigator.share({ files: [file], text: info.text, title: 'The Magic Farmcare' }).catch(function (e) {
+        if (e && e.name !== 'AbortError') saveCard(info);
+      });
+    } else {
+      saveCard(info);
+    }
+  }
+
+  // no share sheet (desktop, some browsers): download the picture and copy the message with the link
+  function saveCard(info) {
+    try {
+      var a = doc.createElement('a');
+      a.href = URL.createObjectURL(info.blob);
+      a.download = 'the-magic-farmcare.png';
+      doc.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+    } catch (e) { /* downloads blocked */ }
+    var done = function () { toast('บันทึกรูปและคัดลอกข้อความพร้อมลิงก์แล้ว นำไปโพสต์ได้เลย'); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(info.text).then(done, function () { toast('บันทึกรูปแล้ว นำไปโพสต์ได้เลย'); });
+    else toast('บันทึกรูปแล้ว นำไปโพสต์ได้เลย');
+  }
+
+  function shareLine() {
+    var text = shareInfo ? shareInfo.text : 'มาเล่น The Magic Farmcare กัน ' + MF.CONFIG.shareUrl;
+    track('share', { via: 'line' });
+    root.open('https://line.me/R/share?text=' + encodeURIComponent(text), '_blank', 'noopener');
+  }
+
+  function contactHtml() {
+    var c = MF.CONFIG.contact || {}, links = [];
+    if (c.line) links.push('<a class="btn btn-line" href="' + esc(c.line) + '" target="_blank" rel="noopener">แชทกับเราทาง LINE</a>');
+    if (c.phone) links.push('<a class="btn" href="tel:' + esc(c.phone.replace(/[^0-9+]/g, '')) + '">โทร ' + esc(c.phone) + '</a>');
+    if (c.map) links.push('<a class="btn" href="' + esc(c.map) + '" target="_blank" rel="noopener">แผนที่ร้าน</a>');
+    if (!links.length) return '';
+    return '<section class="card contact-card"><h2>ปรึกษาเรื่องปุ๋ย ยา และเมล็ดพันธุ์</h2>' +
+      '<p>ทีมธนาพันธ์ ฟาร์มแคร์ อ.ธาตุพนม จ.นครพนม ยินดีให้คำแนะนำ</p><div class="contact-links">' + links.join('') + '</div></section>';
+  }
+
+  // custom events for Vercel Web Analytics (ignored where analytics is not loaded)
+  function track(name, data) {
+    try { if (root.va) root.va('event', { name: name, data: data }); } catch (e) { /* analytics is optional */ }
   }
 
   // trophy for 3 stars, silver and bronze medals for 2 and 1, a sprout for a first try
   var MEDALS = { 2: { x: '#a9b4bd', y: '#eef3f6', k: '#5d6870' }, 1: { x: '#b06a35', y: '#e6a36d', k: '#6a3a18' } };
+  function badgeSprite(stars) {
+    if (stars === 3) return { name: 'trophy', over: { k: '#8a6414' } };
+    if (MEDALS[stars]) return { name: 'medal', over: MEDALS[stars] };
+    return { name: 'sproutPot', over: { k: '#55321c' } };
+  }
   function badgeImg(stars) {
-    if (stars === 3) return S.img('trophy', 6, { k: '#8a6414' });
-    if (MEDALS[stars]) return S.img('medal', 6, MEDALS[stars]);
-    return S.img('sproutPot', 6, { k: '#55321c' });
+    var b = badgeSprite(stars);
+    return S.img(b.name, 6, b.over);
   }
 
   /* pixel fireworks behind the title for a 3-star finish */
@@ -826,6 +907,8 @@
         break;
       case 'confirm-restart': sfx('tap'); openSheet('confirm', confirmHtml('เกมที่เล่นอยู่จะหายไป แล้วเริ่มฤดูฝนใหม่ด้วยทุน ' + fmt(MF.CONFIG.startMoney) + ' บาท', 'new-game')); break;
       case 'new-game': sfx('select'); startNewGame(); break;
+      case 'share-card': sfx('tap'); shareCard(); break;
+      case 'share-line': sfx('tap'); shareLine(); break;
       case 'go-title': sfx('tap'); closeSheet(); $('coach').hidden = true; coachKey = null; coachQueue = []; renderTitle(); break;
     }
   }
