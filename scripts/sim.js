@@ -27,7 +27,8 @@ function bestTop(plot, use) {
   return null;
 }
 
-function correctFor(ev) { return MF.EVENTS[ev.id].correct[0]; }
+// a working product among the four shown for this pest
+function correctFor(ev) { var ok = MF.EVENTS[ev.id].correct; return ev.options.filter(function (p) { return ok.indexOf(p) >= 0; })[0]; }
 
 var strategies = {
   expert: {

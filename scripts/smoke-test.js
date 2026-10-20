@@ -77,7 +77,12 @@ fs.mkdirSync(outDir, { recursive: true });
     // care: answer every pest correctly, respond to weather, top-dress with urea
     var fixes = await page.evaluate(function () {
       var s = JSON.parse(localStorage.getItem('tmf.save.v2'));
-      return s.plots.map(function (p) { return p.event ? MF.EVENTS[p.event.id].correct[0] : null; });
+      // pick a working product among the ones actually on screen
+      return s.plots.map(function (p) {
+        if (!p.event) return null;
+        var ok = MF.EVENTS[p.event.id].correct;
+        return p.event.options.filter(function (x) { return ok.indexOf(x) >= 0; })[0];
+      });
     });
     for (var j = 0; j < 4; j++) {
       if (fixes[j]) await page.click('[data-action="treat"][data-i="' + j + '"][data-p="' + fixes[j] + '"]');
