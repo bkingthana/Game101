@@ -62,12 +62,30 @@
     return out;
   }
 
-  /* soil + fertilizer that the crop can use this season */
+  /* soil acidity this season: last season's level, minus dolomite bought at planting, plus 21-0-0 used now.
+     Saves from before acidity have no acid or amend, which reads as 0 and none. */
+  function seasonAcid(plot) {
+    var a = (plot.acid || 0) - (plot.amend || []).reduce(function (s, id) { return s + (MF.AMENDMENTS[id].acidCut || 0); }, 0);
+    var up = [plot.basal, plot.top].reduce(function (m, fid) { return Math.max(m, (fid && MF.FERTS[fid].acidify) || 0); }, 0);
+    return clamp(Math.max(0, a) + up, 0, MF.ACIDITY.max);
+  }
+
+  /* what an acidity level does: share of P the crop can use, extra yield loss, and whether the soil counts as sour */
+  function acidEffect(level) {
+    var e = { pUse: 1, loss: 0, sour: level >= MF.ACIDITY.sour };
+    MF.ACIDITY.levels.forEach(function (l) { if (level >= l.from) { e.pUse = l.pUse; e.loss = l.loss; } });
+    return e;
+  }
+
+  function canAmend(use) { return isCrop(use) || use === 'fallow'; }
+
+  /* soil + fertilizer that the crop can use this season; acid soil locks up part of the P */
   function available(plot, includeTop) {
     var b = fertAdd(plot.basal, 'basal');
     var t = includeTop ? fertAdd(plot.top, 'top') : { N: 0, P: 0, K: 0 };
     var out = {};
     NUTRIENTS.forEach(function (k) { out[k] = plot.soil[k] + b[k] + t[k]; });
+    out.P *= acidEffect(seasonAcid({ acid: plot.acid, amend: plot.amend, basal: plot.basal, top: includeTop ? plot.top : null })).pUse;
     return { total: out, added: { N: b.N + t.N, P: b.P + t.P, K: b.K + t.K } };
   }
 
@@ -92,7 +110,7 @@
       stage: 'plan',
       over: null,
       plots: MF.PLOTS.map(function (p) {
-        return { soil: { N: p.soil.N, P: p.soil.P, K: p.soil.K }, use: 'idle', basal: null, top: null, lastUse: null, event: null };
+        return { soil: { N: p.soil.N, P: p.soil.P, K: p.soil.K }, acid: 0, use: 'idle', basal: null, top: null, lastUse: null, event: null };
       }),
       weather: null,
       results: null,
@@ -118,7 +136,7 @@
     state.seasonCost = 0;
     state.results = null;
     state.plots.forEach(function (p) {
-      p.use = 'idle'; p.basal = null; p.top = null; p.event = null; p.prevent = [];
+      p.use = 'idle'; p.basal = null; p.top = null; p.event = null; p.prevent = []; p.amend = [];
     });
   }
 
@@ -135,10 +153,11 @@
     return (p.prevent || []).reduce(function (f, id) { return f * (1 - (MF.PREVENTIONS[id].prevents[eventId] || 0)); }, 1);
   }
 
-  /* what planting one plot costs: seed, basal fertilizer and prevention */
+  /* what planting one plot costs: seed, basal fertilizer, prevention and soil fixes */
   function plotCost(p) {
-    if (!isCrop(p.use)) return useCost(p.use);
-    return useCost(p.use) + (p.basal ? MF.FERTS[p.basal].cost : 0) +
+    var amend = (p.amend || []).reduce(function (s, id) { return s + MF.AMENDMENTS[id].cost; }, 0);
+    if (!isCrop(p.use)) return useCost(p.use) + amend;
+    return useCost(p.use) + (p.basal ? MF.FERTS[p.basal].cost : 0) + amend +
       (p.prevent || []).reduce(function (s, id) { return s + MF.PREVENTIONS[id].cost; }, 0);
   }
 
@@ -146,12 +165,13 @@
     return state.plots.reduce(function (sum, p) { return sum + plotCost(p); }, 0);
   }
 
-  function setPlan(state, i, use, basal, prevent) {
+  function setPlan(state, i, use, basal, prevent, amend) {
     var p = state.plots[i];
     var ok = preventionsFor(use);
     p.use = use;
     p.basal = isCrop(use) ? basal || null : null;
     p.prevent = (prevent || []).filter(function (id) { return ok.indexOf(id) >= 0; });
+    p.amend = canAmend(use) ? (amend || []).filter(function (id) { return !!MF.AMENDMENTS[id]; }) : [];
   }
 
   /* Four products to choose from: up to two that work, every partial or harmful one, and at least
@@ -251,11 +271,15 @@
     var before = { N: p.soil.N, P: p.soil.P, K: p.soil.K };
     var r = { use: p.use, kg: 0, revenue: 0, tips: [], soilBefore: before, soilAfter: null };
     var nat = C.naturalRecovery;
+    var acid = seasonAcid(p);
+    var limed = (p.amend || []).length > 0 && (p.acid || 0) > 0;
 
     if (!isCrop(p.use)) {
       var add = p.use === 'fallow' ? MF.LAND_USES.fallow.add : { N: 0, P: 0, K: 0 };
       NUTRIENTS.forEach(function (k) { p.soil[k] = clamp(Math.round(p.soil[k] + add[k] + nat), 0, 100); });
       if (p.use === 'fallow') r.tips.push({ tone: 'good', text: 'ไถกลบปอเทือง ดินได้ไนโตรเจนเพิ่ม +' + add.N });
+      if (limed) r.tips.push({ tone: 'good', text: 'ใส่ปูนโดโลไมท์แล้ว ดินหายเปรี้ยว' });
+      p.acid = Math.max(0, acid - (p.use === 'fallow' ? MF.LAND_USES.fallow.acidCut || 0 : 0));
       r.soilAfter = { N: p.soil.N, P: p.soil.P, K: p.soil.K };
       return r;
     }
@@ -264,6 +288,7 @@
     var av = available(p, true);
     var nut = nutrientFactor(crop, av.total);
     var suit = crop.suit[season.id];
+    var ae = acidEffect(acid);
 
     var wl = 0;
     if (w === 'drought') wl = crop.drought * info.droughtMult * (respond ? 0.15 : 1);
@@ -284,19 +309,23 @@
     }
 
     var jitter = 1 + (rand(state) * 2 - 1) * C.yieldJitter;
-    var kg = Math.round(crop.baseYield * suit * nut.nf * (nut.excess ? 0.9 : 1) * (1 - wl) * (1 - riverLoss) * (1 - (pest ? pest.loss : 0)) * jitter);
+    var kg = Math.round(crop.baseYield * suit * nut.nf * (nut.excess ? 0.9 : 1) * (1 - ae.loss) * (1 - wl) * (1 - riverLoss) * (1 - (pest ? pest.loss : 0)) * jitter);
     var safe = !!crop.veg && (!spray || spray.group === 'bio');
     r.kg = Math.max(0, kg);
     r.price = safe ? Math.round(crop.price * (1 + C.safeVegBonus) * 10) / 10 : crop.price;
     r.safe = safe;
     r.revenue = Math.round(r.kg * r.price);
-    r.factors = { suit: suit, nf: nut.nf, limiting: nut.limiting, excess: nut.excess, weatherLoss: wl, riverLoss: riverLoss, pest: pest, eventId: p.event ? p.event.id : null, safe: safe, sprayed: !!(crop.veg && spray && !safe), burn: burn, burnBy: burn ? spray.name : null };
+    r.factors = { suit: suit, nf: nut.nf, limiting: nut.limiting, excess: nut.excess, weatherLoss: wl, riverLoss: riverLoss, pest: pest, eventId: p.event ? p.event.id : null, safe: safe, sprayed: !!(crop.veg && spray && !safe), burn: burn, burnBy: burn ? spray.name : null,
+      short: NUTRIENTS.filter(function (k) { return av.total[k] < crop.need[k]; }), acid: acid, acidP: ae.pUse, acidLoss: ae.loss, limed: limed };
 
     var grow = Math.min(1, suit * nut.nf);
     var care = p.basal && MF.FERTS[p.basal].soilCare ? 0.75 : 1;
     NUTRIENTS.forEach(function (k) {
       p.soil[k] = clamp(Math.round(before[k] + av.added[k] * FERT_KEEP - crop.uptake[k] * grow * care + nat), 0, 100);
     });
+    // organic fertilizer takes a little acidity off after the season
+    var cut = [p.basal, p.top].reduce(function (s, fid) { return s + ((fid && MF.FERTS[fid].acidCut) || 0); }, 0);
+    p.acid = Math.max(0, acid - cut);
     r.soilAfter = { N: p.soil.N, P: p.soil.P, K: p.soil.K };
     r.tips = cropTips(p, crop, season, w, respond, r.factors);
     state.stats.kg[p.use] = (state.stats.kg[p.use] || 0) + r.kg;
@@ -318,6 +347,11 @@
       if (p.lastUse === p.use) tips.push({ tone: 'bad', text: 'ปลูก' + crop.name + 'ซ้ำแปลงเดิม โรคและแมลงสะสม ลองปลูกสลับพืช' });
     }
     tips = tips.concat(preventionTips(p, crop));
+    if (f.acidLoss) {
+      tips.push({ tone: 'bad', text: 'ดินเปรี้ยวจากใส่ 21-0-0 ติดกัน พืชใช้ฟอสฟอรัสได้แค่ ' + pct(f.acidP) + ' และผลผลิตลดอีก ' + pct(f.acidLoss) + ' ฤดูหน้าใส่ปูนโดโลไมท์ตอนปลูก หรือสลับไปใช้ยูเรีย' });
+    } else if (f.limed) {
+      tips.push({ tone: 'good', text: 'ใส่ปูนโดโลไมท์แล้ว ดินหายเปรี้ยว พืชใช้ฟอสฟอรัสได้เต็มที่' });
+    }
     if (f.suit < 0.8) tips.push({ tone: 'bad', text: crop.name + 'ไม่เหมาะกับ' + season.name + ' ได้ผลผลิตแค่ ' + pct(f.suit) });
     if (f.weatherLoss > 0.04) {
       if (respond) tips.push({ tone: 'good', text: (w === 'drought' ? 'สูบน้ำ' : 'ระบายน้ำ') + 'ทัน ความเสียหายเหลือแค่ ' + pct(f.weatherLoss) });
@@ -329,8 +363,12 @@
     if (f.safe) tips.push({ tone: 'good', text: 'ไม่ใช้ยาเคมี ขายเป็นผักปลอดภัย ได้ราคาเพิ่ม ' + pct(C.safeVegBonus) });
     if (f.sprayed) tips.push({ tone: 'bad', text: 'ผักที่ฉีดยาเคมีต้องเว้นระยะก่อนเก็บเกี่ยว ขายได้ราคาปกติ ถ้าใช้ชีวภัณฑ์ เช่น เชื้อบีที ไตรโคเดอร์มา หรือไม่ใช้ยา จะได้ราคาผักปลอดภัย' });
     if (f.nf < 0.95) {
-      var k = f.limiting;
-      tips.push({ tone: 'bad', text: 'ดินขาด' + MF.NUTRIENT_NAMES[k] + ' (' + k + ') ผลผลิตลด ' + pct(1 - f.nf) + ' ลองใช้ ' + MF.NUTRIENT_FIX[k] });
+      // name every short nutrient and pick the fix for that combination
+      var short = f.short && f.short.length ? f.short : [f.limiting];
+      var names = short.map(function (k) { return MF.NUTRIENT_NAMES[k] + ' (' + k + ')'; });
+      names = names.length > 1 ? names.slice(0, -1).join(' ') + ' และ' + names[names.length - 1] : names[0];
+      var fix = MF.NUTRIENT_FIX[short.join('')] || short.map(function (k) { return MF.NUTRIENT_FIX[k]; }).join(' กับ ');
+      tips.push({ tone: 'bad', text: 'ดินขาด' + names + ' ผลผลิตลด ' + pct(1 - f.nf) + ' ลองใช้ ' + fix });
     }
     if (f.excess) tips.push({ tone: 'bad', text: 'ใส่ไนโตรเจนมากเกินไป ต้นอ่อนแอ ล้มง่าย แมลงชอบ' });
     if (!tips.some(function (t) { return t.tone === 'bad'; })) tips.unshift({ tone: 'good', text: 'ดูแลได้ดีมาก ' + crop.name + 'งามเต็มแปลง' });
@@ -367,10 +405,11 @@
     var w = state.weather.actual;
     var respond = state.weather.respond;
     var plots = state.plots.map(function (p, i) { return harvestPlot(state, p, i, season, w, respond); });
-    // a fertilizer note (21-0-0 and soil acidity) goes once a season, on the first plot that used it
+    // a fertilizer note (21-0-0 and soil acidity) goes once a season, on the first plot that used it;
+    // a plot whose soil already turned sour has its own tip about it
     var noted = {};
     state.plots.forEach(function (p, i) {
-      if (!isCrop(p.use)) return;
+      if (!isCrop(p.use) || plots[i].factors.acidLoss) return;
       [p.basal, p.top].forEach(function (fid) {
         var f = fid && MF.FERTS[fid];
         if (f && f.tip && !noted[fid]) { noted[fid] = true; plots[i].tips.push({ tone: 'good', text: f.tip }); }
@@ -412,6 +451,9 @@
     isCrop: isCrop,
     useCost: useCost,
     fertAdd: fertAdd,
+    seasonAcid: seasonAcid,
+    acidEffect: acidEffect,
+    canAmend: canAmend,
     available: available,
     nutrientFactor: nutrientFactor,
     planCost: planCost,

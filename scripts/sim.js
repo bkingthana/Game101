@@ -1,11 +1,13 @@
 /* Balance check: plays thousands of games with scripted strategies and prints final money.
-   Run: node scripts/sim.js [games]   (FERTS=1 also prints how often each fertilizer is used) */
+   Run: node scripts/sim.js [games]   (FERTS=1 also prints how often each fertilizer is used and how many
+   harvests were on sour soil; NOACID=1 turns off the effect of soil acidity to measure its cost) */
 require('../js/data.js');
 require('../js/engine.js');
 var MF = globalThis.MF;
 var E = MF.engine;
 
 var GAMES = Number(process.argv[2]) || 2000;
+if (process.env.NOACID) MF.ACIDITY.levels = [];
 
 function deficit(plot, use) {
   var need = MF.CROPS[use].need;
@@ -107,6 +109,14 @@ function planBest(s, crops, prevent, basalFn) {
 var ALL_CROPS = Object.keys(MF.CROPS);
 var GRAINS = ['rice', 'corn', 'shallot'];
 
+function addDolomite(s) {
+  s.plots.forEach(function (p, i) {
+    if (!E.canAmend(p.use) || !(p.acid > 0)) return;
+    E.setPlan(s, i, p.use, p.basal, p.prevent, ['dolomite']);
+    if (E.planCost(s) > s.money - 1500) E.setPlan(s, i, p.use, p.basal, p.prevent, []);
+  });
+}
+
 // right product for every pest, water when needed, top-dressing chosen by topFn
 function expertCare(s, topFn) {
   if (E.weatherResponse(s)) E.setResponse(s, true);
@@ -137,6 +147,16 @@ var strategies = {
   fertopt: {
     plan: function (s) { planBest(s, ALL_CROPS, true, optBasal); },
     care: function (s) { expertCare(s, optTop); },
+  },
+  // expert planting, but top-dresses 21-0-0 on every crop every season and never fixes the soil
+  as21: {
+    plan: function (s) { planBest(s, ALL_CROPS, true); },
+    care: function (s) { expertCare(s, function () { return 'f2100'; }); },
+  },
+  // the same, plus dolomite at planting on every plot whose soil has started to turn acid
+  as21lime: {
+    plan: function (s) { planBest(s, ALL_CROPS, true); addDolomite(s); },
+    care: function (s) { expertCare(s, function () { return 'f2100'; }); },
   },
   // same skill, but only grows rice, corn and shallot (the game before vegetables)
   grains: {
@@ -186,6 +206,11 @@ function play(strategy, seed, used) {
       used.top[p.top || 'none'] = (used.top[p.top || 'none'] || 0) + 1;
     });
     if (!E.harvest(s)) throw new Error('care over budget at season ' + s.season);
+    s.results.plots.forEach(function (r) {
+      if (!r.factors) return;
+      used.harvests = (used.harvests || 0) + 1;
+      if (r.factors.acidLoss) used.sour = (used.sour || 0) + 1;
+    });
     E.nextSeason(s);
   }
   return s;
@@ -220,5 +245,6 @@ Object.keys(strategies).forEach(function (name) {
         return (k === 'none' ? 'none' : MF.FERTS[k].name) + ' ' + Math.round((u[k] / total) * 100) + '%';
       }).join(', '));
     });
+    console.log('   sour soil in', Math.round(((used.sour || 0) / (used.harvests || 1)) * 100) + '% of crop harvests');
   }
 });

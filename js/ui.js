@@ -69,11 +69,39 @@
     return { year: si.year, name: si.season.name, months: si.season.months, id: si.season.id };
   }
 
-  /* N P K bars. base = soil, add = fertilizer, need = crop target. The bar scale tops out at 120. */
-  function soilBars(soil, add, need) {
+  /* what the crop can use of each nutrient: soil + fertilizer, with P cut on acid soil (pUse) */
+  function usable(soil, add, pUse) {
+    return { N: soil.N + add.N, P: (soil.P + add.P) * (pUse || 1), K: soil.K + add.K };
+  }
+
+  function lackingOf(soil, add, need, pUse) {
+    var u = usable(soil, add, pUse);
+    return ['N', 'P', 'K'].filter(function (k) { return u[k] < need[k]; });
+  }
+
+  // "ดินเปรี้ยว" from MF.ACIDITY.sour up, "ดินเริ่มเปรี้ยว" below it
+  function acidBadge(level) {
+    if (!level) return '';
+    var sour = level >= MF.ACIDITY.sour;
+    return ' <span class="acid-badge' + (sour ? '' : ' mild') + '">' + (sour ? 'ดินเปรี้ยว' : 'ดินเริ่มเปรี้ยว') + '</span>';
+  }
+
+  /* N P K bars. base = soil, add = fertilizer, need = crop target. The bar scale tops out at 120.
+     opts.pUse: share of P the crop can use on acid soil. opts.gap: a line saying what is still short and by how much. */
+  function soilBars(soil, add, need, opts) {
+    opts = opts || {};
+    var lacking = need ? lackingOf(soil, add, need, opts.pUse) : [];
+    var u = usable(soil, add, opts.pUse);
+    var notes = '';
+    if (opts.pUse && opts.pUse < 1) notes += '<p class="soil-gap bad">ดินเปรี้ยว พืชใช้ฟอสฟอรัสได้แค่ ' + Math.round(opts.pUse * 100) + '%</p>';
+    if (need && opts.gap) {
+      notes += lacking.length
+        ? '<p class="soil-gap bad">ยังขาด ' + lacking.map(function (k) { return k + ' ' + Math.ceil(need[k] - u[k]); }).join(' · ') + ' เลือกสูตรที่มี ' + lacking.join(' ') + '</p>'
+        : '<p class="soil-gap good">ธาตุอาหารพอแล้ว</p>';
+    }
     return '<div class="soil">' + ['N', 'P', 'K'].map(function (k) {
       var base = Math.min(soil[k], 120), extra = Math.max(0, Math.min(add[k], 120 - base));
-      var short = need && soil[k] + add[k] < need[k];
+      var short = lacking.indexOf(k) >= 0;
       return '<div class="soil-row soil-' + k + '">' +
         '<b class="nut nut-' + k + '">' + k + '</b>' +
         '<span class="bar">' +
@@ -84,7 +112,7 @@
         '<span class="soil-val' + (short ? ' short' : '') + '">' + Math.round(soil[k]) +
           (add[k] ? '<small>+' + Math.round(add[k]) + '</small>' : '') + '</span>' +
       '</div>';
-    }).join('') +
+    }).join('') + notes +
     '<p class="soil-legend">N ไนโตรเจน · P ฟอสฟอรัส · K โพแทสเซียม' + (need ? ' · ขีดดำ = ระดับที่พืชต้องการ' : '') + '</p></div>';
   }
 
@@ -217,11 +245,12 @@
       var picked = p.use !== 'idle' || p.basal;
       html += '<li><button class="plot-row' + (picked ? ' picked' : '') + '" data-action="open-plot" data-i="' + i + '" data-key="plot-' + i + '">' +
         plotNum(i) +
-        '<span class="plot-main"><span class="plot-name">' + esc(info.name) + ' <small>' + esc(info.terrain) + '</small></span>' + npkMini(p.soil) +
+        '<span class="plot-main"><span class="plot-name">' + esc(info.name) + ' <small>' + esc(info.terrain) + '</small>' + acidBadge(p.acid) + '</span>' + npkMini(p.soil) +
         (p.lastUse ? '<span class="plot-last">ฤดูที่แล้ว: ' + esc(useName(p.lastUse)) + '</span>' : '') + '</span>' +
         '<span class="plot-pick">' + useIcon(p.use, 3) + '<span class="pick-text"><b>' + esc(useName(p.use)) + '</b>' +
         (p.basal ? '<small>+ ' + esc(MF.FERTS[p.basal].name) + '</small>' : '') +
-        (p.prevent && p.prevent.length ? '<small>+ ' + esc(p.prevent.map(function (id) { return MF.PREVENTIONS[id].short; }).join(', ')) + '</small>' : '') + '</span></span>' +
+        (p.prevent && p.prevent.length ? '<small>+ ' + esc(p.prevent.map(function (id) { return MF.PREVENTIONS[id].short; }).join(', ')) + '</small>' : '') +
+        (p.amend && p.amend.length ? '<small>+ ' + esc(p.amend.map(function (id) { return MF.AMENDMENTS[id].short; }).join(', ')) + '</small>' : '') + '</span></span>' +
         '</button></li>';
     });
     html += '</ul>';
@@ -292,11 +321,13 @@
         var crop = MF.CROPS[x.p.use];
         var basal = E.fertAdd(x.p.basal, 'basal'), top = E.fertAdd(x.p.top, 'top');
         var add = { N: basal.N + top.N, P: basal.P + top.P, K: basal.K + top.K };
-        var nut = E.nutrientFactor(crop, { N: x.p.soil.N + add.N, P: x.p.soil.P + add.P, K: x.p.soil.K + add.K });
-        var lacking = ['N', 'P', 'K'].filter(function (k) { return x.p.soil[k] + add[k] < crop.need[k]; });
+        // acidity this season, with the top-dressing picked so far (21-0-0 can tip the soil into sour)
+        var acidNow = E.seasonAcid(x.p), pUse = E.acidEffect(acidNow).pUse;
+        var nut = E.nutrientFactor(crop, usable(x.p.soil, add, pUse));
+        var lacking = lackingOf(x.p.soil, add, crop.need, pUse);
         var hint = nut.excess ? '<span class="hint bad">N มากเกินไป</span>' : lacking.length ? '<span class="hint bad">ยังขาด ' + lacking.join(' ') + '</span>' : '<span class="hint good">ธาตุอาหารพอแล้ว</span>';
-        html += '<div class="top-row"><div class="top-head">' + plotNum(x.i) + '<b>' + esc(crop.name) + '</b>' + hint + '</div>' +
-          soilBars(x.p.soil, add, crop.need) + '<div class="chips">' +
+        html += '<div class="top-row"><div class="top-head">' + plotNum(x.i) + '<b>' + esc(crop.name) + '</b>' + acidBadge(acidNow) + hint + '</div>' +
+          soilBars(x.p.soil, add, crop.need, { pUse: pUse }) + '<div class="chips">' +
           '<button class="chip" data-action="top" data-i="' + x.i + '" data-f="" data-key="top-' + x.i + '-none" aria-pressed="' + !x.p.top + '">ไม่ใส่</button>';
         fertOrder('top').forEach(function (fid) {
           var f = MF.FERTS[fid];
@@ -409,11 +440,14 @@
     var s = seasonLabel();
     var crop = MF.CROPS[d.use];
     var add = crop ? E.fertAdd(d.basal, 'basal') : (d.use === 'fallow' ? MF.LAND_USES.fallow.add : { N: 0, P: 0, K: 0 });
+    // acidity this season if planted as drafted (dolomite takes it down; a 21-0-0 top-dressing later can push it up)
+    var pUse = crop ? E.acidEffect(E.seasonAcid({ acid: p.acid, amend: d.amend, basal: d.basal, top: null })).pUse : 1;
 
     var html = '<div class="sheet-head">' + plotNum(d.i) + '<div class="sheet-title"><h2>' + esc(info.name) + ' · ' + esc(info.terrain) + '</h2>' +
-      '<p>' + esc(info.note) + (p.lastUse ? ' · ฤดูที่แล้วปลูก' + esc(useName(p.lastUse)) : '') + '</p></div>' +
+      '<p>' + esc(info.note) + (p.lastUse ? ' · ฤดูที่แล้วปลูก' + esc(useName(p.lastUse)) : '') + acidBadge(p.acid) + '</p></div>' +
       '<button class="icon-btn close-btn" data-action="close-sheet" aria-label="ปิด">×</button></div>';
-    html += '<h3 class="sheet-sub">ธาตุอาหารในดิน' + (crop ? ' เทียบกับที่' + esc(crop.name) + 'ต้องการ' : '') + '</h3>' + soilBars(p.soil, add, crop ? crop.need : null);
+    html += '<h3 class="sheet-sub">ธาตุอาหารในดิน' + (crop ? ' เทียบกับที่' + esc(crop.name) + 'ต้องการ' : '') + '</h3>' +
+      soilBars(p.soil, add, crop ? crop.need : null, { pUse: pUse, gap: true });
 
     html += '<h3 class="sheet-sub">จะปลูกอะไรใน' + esc(s.name) + '</h3><div class="choice-grid crops">';
     USES.forEach(function (u) {
@@ -475,7 +509,25 @@
       html += '</div>';
     }
 
-    var thisCost = E.plotCost({ use: d.use, basal: d.basal, prevent: d.prevent });
+    // soil fixes, offered once the soil has started to turn acid
+    var acid = p.acid || 0;
+    if (E.canAmend(d.use) && acid > 0) {
+      var nextUp = Object.keys(MF.FERTS).reduce(function (m, id) { return Math.max(m, MF.FERTS[id].acidify || 0); }, 0);
+      var acidNote = acid >= MF.ACIDITY.sour ? 'ดินแปลงนี้เปรี้ยวแล้ว พืชใช้ฟอสฟอรัสได้น้อยลงและผลผลิตลด'
+        : acid + nextUp >= MF.ACIDITY.sour ? 'ดินแปลงนี้เริ่มเปรี้ยว ถ้าใส่ 21-0-0 อีกฤดูนี้ ดินจะเปรี้ยว พืชใช้ฟอสฟอรัสได้น้อยลง'
+        : 'ดินแปลงนี้เริ่มเปรี้ยว ยังไม่กระทบผลผลิต แต่ถ้าใส่ 21-0-0 ต่อไปจะเปรี้ยว';
+      html += '<h3 class="sheet-sub">ปรับปรุงดิน <small>ใส่ตอนปลูก</small></h3><p class="crop-note">' + acidNote + '</p><div class="fert-list">';
+      Object.keys(MF.AMENDMENTS).forEach(function (id) {
+        var am = MF.AMENDMENTS[id];
+        html += '<button class="fert" data-action="toggle-amend" data-a="' + id + '" data-key="amend-' + id + '" aria-pressed="' + (d.amend.indexOf(id) >= 0) + '">' +
+          '<span class="sack">' + S.img(am.icon, 3, { x: am.color }) + '</span>' +
+          '<span class="fert-text"><b>' + esc(am.name) + '</b><small>' + esc(am.desc) + '</small><small class="timing">ลดความเปรี้ยวของดินได้มาก</small></span>' +
+          '<span class="price num">' + fmt(am.cost) + '</span></button>';
+      });
+      html += '</div>';
+    }
+
+    var thisCost = E.plotCost({ use: d.use, basal: d.basal, prevent: d.prevent, amend: d.amend });
     var others = E.planCost(state) - E.plotCost(p);
     var over = others + thisCost > state.money;
     html += '<div class="sheet-foot"><div class="sheet-total"><span>ค่าใช้จ่ายแปลงนี้ (บาท)</span><b class="num big">' + fmt(thisCost) + '</b>' +
@@ -487,7 +539,7 @@
   function openPlot(i) {
     if (state.stage !== 'plan') return;
     var p = state.plots[i];
-    draft = { i: i, use: p.use, basal: p.basal, prevent: (p.prevent || []).slice() };
+    draft = { i: i, use: p.use, basal: p.basal, prevent: (p.prevent || []).slice(), amend: (p.amend || []).slice() };
     sfx('tap');
     openSheet('plot', plotSheetHtml());
     updateScene();
@@ -530,7 +582,8 @@
       '<li>แปลงที่ลุ่มเสี่ยงน้ำท่วม แปลงที่ดอนเสี่ยงแล้ง แปลงริมโขงดินดี สูบน้ำได้ถูก แต่หน้าฝนน้ำโขงขึ้น</li>' +
       '<li>ผักกินใบที่ไม่ใช้ยาเคมี หรือใช้ชีวภัณฑ์ (เชื้อบีที ไตรโคเดอร์มา) ขายเป็นผักปลอดภัย ได้ราคาเพิ่ม ' + Math.round(MF.CONFIG.safeVegBonus * 100) + '%</li>' +
       '<li>ปลูกพืชเดิมซ้ำแปลงเดิม โรคและแมลงจะมากขึ้น ใส่ไนโตรเจนมากไปก็เช่นกัน</li>' +
-      '<li>ปุ๋ยถุงถูกไม่ได้คุ้มเสมอ เช่น 21-0-0 ถุงถูกกว่ายูเรียเกือบครึ่ง แต่ไนโตรเจนไม่ถึงครึ่ง เหมาะตอนดินขาด N ไม่มาก ส่วนดินที่ K พอแล้ว ใช้ 16-20-0 หรือ 30-20-0 รองพื้นได้</li>' +
+      '<li>เลือกปุ๋ยตามธาตุที่ดินขาด ไม่ใช่ตามชนิดพืช: ขาด N มากใช้ 46-0-0 ขาดไม่มากใช้ 21-0-0 ขาด N กับ P แต่ K พอใช้ 30-20-0 ขาด P ใช้ 16-20-0 ขาด K ใช้ 0-0-60 ขาดครบทั้งสามตัวใช้ 15-15-15</li>' +
+      '<li>ปุ๋ยถุงถูกไม่ได้คุ้มเสมอ เช่น 21-0-0 ถุงถูกกว่ายูเรียเกือบครึ่ง แต่ไนโตรเจนไม่ถึงครึ่ง และใส่ติดกัน 2 ฤดูดินจะเปรี้ยว พืชใช้ฟอสฟอรัสได้น้อยลง แก้ด้วยปูนโดโลไมท์ตอนปลูก</li>' +
       '<li>ราคาปุ๋ยในเกมเทียบจากราคาวัตถุดิบปุ๋ยตลาดโลกเฉลี่ยหลายปี ให้เห็นว่าสูตรไหนแพงหรือถูกกว่ากันราวเท่าไหร่ ไม่ใช่ราคาขายจริง</li>' +
       '<li>โรคในดิน เช่น เน่าคอดิน รากเน่า รักษาตอนเป็นแล้วได้ผลไม่เต็มที่ คลุกเมล็ดหรือใส่ไตรโคเดอร์มาตั้งแต่ปลูกช่วยป้องกัน</li>' +
       '<li>ฤดูร้อนน้ำน้อย ทุกพืชได้ผลผลิตต่ำ แปลงริมโขงสูบน้ำได้ถูกกว่า</li>' +
@@ -577,6 +630,7 @@
     if (state.season === 0) coach('welcome');
     if (id === 'cool') coach('cool');
     if (id === 'hot') coach('hot');
+    if (state.plots.some(function (p) { return (p.acid || 0) > 0; })) coach('acid');
   }
 
   /* ---------- screens ---------- */
@@ -880,6 +934,7 @@
         draft.use = el.getAttribute('data-use');
         if (!MF.CROPS[draft.use]) draft.basal = null;
         draft.prevent = draft.prevent.filter(function (id) { return E.preventionsFor(draft.use).indexOf(id) >= 0; });
+        if (!E.canAmend(draft.use)) draft.amend = [];
         sfx('select');
         refreshSheet(plotSheetHtml());
         break;
@@ -894,8 +949,14 @@
         sfx('select');
         refreshSheet(plotSheetHtml());
         break;
+      case 'toggle-amend':
+        var am = el.getAttribute('data-a'), ai = draft.amend.indexOf(am);
+        if (ai >= 0) draft.amend.splice(ai, 1); else draft.amend.push(am);
+        sfx('select');
+        refreshSheet(plotSheetHtml());
+        break;
       case 'confirm-plot':
-        E.setPlan(state, draft.i, draft.use, draft.basal, draft.prevent);
+        E.setPlan(state, draft.i, draft.use, draft.basal, draft.prevent, draft.amend);
         sfx(draft.use === 'idle' ? 'tap' : 'coin');
         saveGame();
         closeSheet();
