@@ -117,28 +117,26 @@
      add: soil units one bag gives. Compound formulas give about 0.8 x their percentage (rounded down);
      46-0-0 and 0-0-60 give 30, the most one bag lifts a nutrient; 21-0-0 is scaled like 46-0-0 per % of N
      (21 x 30/46), so a baht buys less N with it than with urea, as at real prices.
-     cost: game price per bag. The ratios between formulas follow 2015-2024 average world raw-material
-     prices (urea, ammonium sulfate, DAP, potassium chloride) mixed into each formula, plus handling, then one
-     scale factor for every bag. 15-15-15 instead follows the average Thai retail price against urea (x 1.13),
-     as BK asked. Organic follows a typical Thai retail price brought to the same scale.
-     README ("ราคาปุ๋ยในเกม") has the method. These are not shop prices.
+     cost: game price per bag = average Thai retail price per 50 kg bag / Thai retail urea (979 baht, 2026)
+     x urea's game price 490, rounded to 10. Every item, organic and dolomite included, is on that one basis.
+     README ("ราคาปุ๋ยในเกม") has the figures and the older world raw-material derivation. These are not shop prices.
      tag/desc say which nutrient gap a formula fills: choose by what the soil is short of, not by crop.
      tip: a note for the harvest summary of the first plot that used it in a season.
      acidify: soil acidity added in a season it is used (MF.ACIDITY). acidCut: acidity it removes after the season. */
   MF.FERTS = {
-    f16200: { name: '16-20-0', tag: 'เน้นฟอสฟอรัส', desc: 'ใช้เมื่อดินขาด P เป็นหลัก ขาด N เล็กน้อย และ K พอแล้ว ช่วยเร่งราก', cost: 450, add: { N: 12, P: 16, K: 0 }, best: 'basal', color: '#c9412f' },
-    f30200: { name: '30-20-0', tag: 'N และ P สูง', desc: 'ใช้เมื่อดินขาดทั้ง N และ P แต่ K พอแล้ว', cost: 560, add: { N: 24, P: 16, K: 0 }, best: 'basal', color: '#1f8fa8' },
+    f16200: { name: '16-20-0', tag: 'เน้นฟอสฟอรัส', desc: 'ใช้เมื่อดินขาด P เป็นหลัก ขาด N เล็กน้อย และ K พอแล้ว ช่วยเร่งราก', cost: 490, add: { N: 12, P: 16, K: 0 }, best: 'basal', color: '#c9412f' },
+    f30200: { name: '30-20-0', tag: 'N และ P สูง', desc: 'ใช้เมื่อดินขาดทั้ง N และ P แต่ K พอแล้ว', cost: 620, add: { N: 24, P: 16, K: 0 }, best: 'basal', color: '#1f8fa8' },
     f151515: { name: '15-15-15', tag: 'ปุ๋ยสูตรเสมอ', desc: 'ใช้เมื่อดินขาด N P K พอๆ กัน ใส่ได้ทุกช่วง', cost: 550, add: { N: 12, P: 12, K: 12 }, best: 'any', color: '#2f74c9' },
-    f2088: { name: '20-8-8', tag: 'เน้นไนโตรเจน', desc: 'ใช้เมื่อดินขาด N เป็นหลัก และขาด P K เล็กน้อย ใส่ได้ทุกช่วง', cost: 430, add: { N: 16, P: 6, K: 6 }, best: 'any', color: '#9c8f1a' },
-    organic: { name: 'อินทรีย์', tag: 'ปุ๋ยมูลไก่อัดเม็ด', desc: 'ธาตุอาหารน้อย แต่ดินร่วนซุย เสื่อมช้าลง และช่วยลดดินเปรี้ยวได้เล็กน้อย', cost: 290, add: { N: 6, P: 6, K: 6 }, best: 'basal', soilCare: true, acidCut: 1, color: '#7a5230' },
+    f2088: { name: '20-8-8', tag: 'เน้นไนโตรเจน', desc: 'ใช้เมื่อดินขาด N เป็นหลัก และขาด P K เล็กน้อย ใส่ได้ทุกช่วง', cost: 490, add: { N: 16, P: 6, K: 6 }, best: 'any', color: '#9c8f1a' },
+    organic: { name: 'อินทรีย์', tag: 'ปุ๋ยมูลไก่อัดเม็ด', desc: 'ธาตุอาหารน้อย แต่ดินร่วนซุย เสื่อมช้าลง และช่วยลดดินเปรี้ยวได้เล็กน้อย', cost: 230, add: { N: 6, P: 6, K: 6 }, best: 'basal', soilCare: true, acidCut: 1, color: '#7a5230' },
     f4600: { name: '46-0-0', tag: 'ยูเรีย', desc: 'ใช้เมื่อดินขาด N มาก เงินเท่ากันได้ N มากที่สุด ใส่ตอนพืชกำลังโต', cost: 490, add: { N: 30, P: 0, K: 0 }, best: 'top', color: '#2f8f45' },
     f2100: {
-      name: '21-0-0', tag: 'แอมโมเนียมซัลเฟต', desc: 'ใช้เมื่อดินขาด N ไม่มาก ถุงถูกกว่ายูเรียเกือบครึ่ง แต่ N ไม่ถึงครึ่ง ใส่ติดกัน 2 ฤดูดินจะเปรี้ยว',
-      cost: 260, add: { N: 14, P: 0, K: 0 }, best: 'top', acidify: 2, color: '#717a86',
+      name: '21-0-0', tag: 'แอมโมเนียมซัลเฟต', desc: 'ใช้เมื่อดินขาด N ไม่มาก ถุงถูกกว่ายูเรียราว 30% แต่ N ไม่ถึงครึ่ง เงินเท่ากันได้ N น้อยกว่า ใส่ติดกัน 2 ฤดูดินเปรี้ยว',
+      cost: 340, add: { N: 14, P: 0, K: 0 }, best: 'top', acidify: 2, color: '#717a86',
       tip: '21-0-0 ให้กำมะถันด้วย แต่ทำให้ดินเปรี้ยวขึ้นทุกฤดูที่ใส่ ใส่ติดกัน 2 ฤดู พืชจะใช้ฟอสฟอรัสได้น้อยลงและผลผลิตลด สลับไปใช้ยูเรีย หรือใส่ปูนโดโลไมท์ตอนปลูก',
     },
-    f2577: { name: '25-7-7', tag: 'N สูง มี P K', desc: 'ใช้เมื่อดินขาด N และขาด P K นิดหน่อย ใส่ช่วงพืชกำลังโต', cost: 460, add: { N: 20, P: 5, K: 5 }, best: 'top', color: '#c2417f' },
-    f0060: { name: '0-0-60', tag: 'โพแทสเซียม', desc: 'ใช้เมื่อดินขาด K ช่วยให้เมล็ดหนัก หัวใหญ่ ใส่ช่วงสร้างผลผลิต', cost: 520, add: { N: 0, P: 0, K: 30 }, best: 'top', color: '#d07d18' },
+    f2577: { name: '25-7-7', tag: 'N สูง มี P K', desc: 'ใช้เมื่อดินขาด N และขาด P K นิดหน่อย ใส่ช่วงพืชกำลังโต', cost: 580, add: { N: 20, P: 5, K: 5 }, best: 'top', color: '#c2417f' },
+    f0060: { name: '0-0-60', tag: 'โพแทสเซียม', desc: 'ใช้เมื่อดินขาด K ช่วยให้เมล็ดหนัก หัวใหญ่ ใส่ช่วงสร้างผลผลิต', cost: 440, add: { N: 0, P: 0, K: 30 }, best: 'top', color: '#d07d18' },
   };
 
   /* Soil acidity, per plot (0 = normal). Each season a plot gets a fertilizer with acidify (21-0-0) it rises by
@@ -156,10 +154,10 @@
   };
 
   /* Soil fixes bought at planting, one bag per plot, for crops and the fallow. Offered once a plot's soil has
-     started to turn acid. Dolomite cost: Thai retail per 50 kg / retail markup 1.152 x game scale 0.7102. */
+     started to turn acid. Priced like the fertilizers: Thai retail per 50 kg / retail urea x 490. */
   MF.AMENDMENTS = {
     dolomite: {
-      name: 'ปูนโดโลไมท์', short: 'โดโลไมท์', icon: 'sack', cost: 130, color: '#b9a88a', acidCut: 6,
+      name: 'ปูนโดโลไมท์', short: 'โดโลไมท์', icon: 'sack', cost: 100, color: '#b9a88a', acidCut: 6,
       desc: 'แก้ดินเปรี้ยว และเพิ่มแคลเซียมกับแมกนีเซียมให้ดิน หว่านตอนเตรียมแปลงก่อนปลูก',
     },
   };
@@ -369,7 +367,7 @@
       'แถบสีคือธาตุอาหารในดิน N = ไนโตรเจน ทำให้ต้นโต ใบเขียว, P = ฟอสฟอรัส ช่วยราก, K = โพแทสเซียม ทำให้ผลผลิตหนัก หัวใหญ่',
       'ขีดสีดำคือระดับที่พืชต้องการ ถ้าแถบสั้นกว่าขีด ผลผลิตจะลดลง ใต้แถบบอกว่ายังขาดธาตุไหนเท่าไหร่',
       'เลือกปุ๋ยตามธาตุที่ดินขาด ไม่ใช่ตามชนิดพืช เช่น ขาด N กับ P แต่ K พอ ใช้ 30-20-0 ขาดครบทั้งสามตัวใช้ 15-15-15',
-      'ราคาปุ๋ยในเกมเทียบจากราคาวัตถุดิบปุ๋ยตลาดโลกเฉลี่ยหลายปี ถุงที่ถูกกว่าไม่ได้คุ้มกว่าเสมอ ดูว่าได้ธาตุที่ดินขาดเท่าไหร่',
+      'ราคาปุ๋ยในเกมเทียบสัดส่วนจากราคาเฉลี่ยร้านค้าในไทย ถุงที่ถูกกว่าไม่ได้คุ้มกว่าเสมอ ดูว่าได้ธาตุที่ดินขาดเท่าไหร่',
     ],
     care: [
       'ช่วงดูแล: อาจเจอแมลง โรค หรือวัชพืช อ่านอาการแล้วเลือกยาให้ตรงกับปัญหา ใช้ผิดเสียเงินฟรี บางชนิดยังทำให้แย่ลง',
