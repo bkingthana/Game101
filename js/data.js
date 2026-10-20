@@ -19,7 +19,7 @@
     contact: {
       lineId: '@thanapun',
       line: 'https://line.me/R/ti/p/@thanapun', // add-friend link of the LINE OA
-      phone: '042-532-096',
+      phone: '042-532096', // written as in the company CI
       map: 'https://maps.app.goo.gl/jhmKQMaDMEPxBMa6A',
     },
   };

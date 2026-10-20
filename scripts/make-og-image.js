@@ -20,9 +20,9 @@ function save(dataUrl, file) {
     var page = await (await browser.newContext({ ignoreHTTPSErrors: true })).newPage();
     await page.goto('file://' + path.join(rootDir, 'index.html'));
     // a file:// image would taint the canvas, so hand the logo over as a data URL
-    var logo = 'data:image/png;base64,' + fs.readFileSync(path.join(rootDir, 'img', 'logo-thanapun-dark.png')).toString('base64');
+    var logo = 'data:image/png;base64,' + fs.readFileSync(path.join(rootDir, 'img', 'logo-thanapun-color.png')).toString('base64');
     await page.evaluate(function (src) {
-      return new Promise(function (resolve) { var img = document.getElementById('brand-img'); img.onload = resolve; img.src = src; });
+      return new Promise(function (resolve) { var img = document.getElementById('brand-img-color'); img.onload = resolve; img.src = src; });
     }, logo);
     await page.evaluate(function () { return document.fonts.ready; });
     save(await page.evaluate(function () { return MF.share.poster().then(function (c) { return c.toDataURL('image/png'); }); }), path.join(rootDir, 'img', 'og-image.png'));
