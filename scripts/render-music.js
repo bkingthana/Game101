@@ -1,4 +1,5 @@
 /* Renders the background music to a WAV file so it can be listened to without playing the game.
+   The WAV is normalized for listening; the printed peak and RMS are at the game's real output level.
    Run: NODE_PATH="$(npm root -g)" node scripts/render-music.js out.wav [seconds] */
 var fs = require('fs');
 var path = require('path');
@@ -16,8 +17,8 @@ var seconds = Number(process.argv[3]) || 60;
     await page.goto('file://' + path.join(__dirname, '..', 'index.html'));
     var res = await page.evaluate(function (seconds) {
       return MF.audio.renderPreview(seconds, 44100).then(function (buf) {
-        var data = buf.getChannelData(0), peak = 0;
-        for (var i = 0; i < data.length; i++) peak = Math.max(peak, Math.abs(data[i]));
+        var data = buf.getChannelData(0), peak = 0, sum = 0;
+        for (var i = 0; i < data.length; i++) { peak = Math.max(peak, Math.abs(data[i])); sum += data[i] * data[i]; }
         // 16-bit mono WAV, normalized to -1 dB for listening
         var gain = peak ? 0.89 / peak : 1, n = data.length, bytes = new Uint8Array(44 + n * 2), v = new DataView(bytes.buffer);
         var str = function (o, s) { for (var k = 0; k < s.length; k++) v.setUint8(o + k, s.charCodeAt(k)); };
@@ -28,11 +29,11 @@ var seconds = Number(process.argv[3]) || 60;
         for (var j = 0; j < n; j++) v.setInt16(44 + j * 2, Math.max(-1, Math.min(1, data[j] * gain)) * 32767, true);
         var bin = '';
         for (var c = 0; c < bytes.length; c += 32768) bin += String.fromCharCode.apply(null, bytes.subarray(c, c + 32768));
-        return { peak: peak, wav: btoa(bin) };
+        return { peak: peak, rms: Math.sqrt(sum / n), wav: btoa(bin) };
       });
     }, seconds);
     fs.writeFileSync(out, Buffer.from(res.wav, 'base64'));
-    console.log('wrote', out, seconds + 's', 'peak before normalizing', res.peak.toFixed(3));
+    console.log('wrote', out, seconds + 's', 'peak before normalizing', res.peak.toFixed(3), 'rms before normalizing', res.rms.toFixed(4));
     if (errors.length) { console.error(errors.join('\n')); process.exit(1); }
   } finally {
     await browser.close();

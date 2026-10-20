@@ -64,30 +64,30 @@
     for (var ch = 0; ch < 2; ch++) {
       var d = buf.getChannelData(ch), lp = 0;
       for (var i = 0; i < len; i++) {
+        var left = 1 - i / len;
         lp += 0.3 * (Math.random() * 2 - 1 - lp);
-        d[i] = lp * Math.pow(1 - i / len, 3);
+        d[i] = lp * left * left * left;
       }
     }
     return buf;
   }
 
   // the output chain for a context: master, music (dry plus reverb) and effects buses, plus what
-  // the music shares: a long noise for breath and water, the wot's tone colour, a slow vibrato
+  // the music shares: a long noise for breath and water, and the wot's tone colour
   function makeBuses(c) {
     var m = c.createGain(); m.gain.value = 0.7; m.connect(c.destination);
     var mus = c.createGain(); mus.gain.value = 0.27; mus.connect(m);
-    var verb = c.createConvolver(), wet = c.createGain();
+    // the reverb send skips the low end, so the drone and bass stay clear instead of booming
+    var send = c.createBiquadFilter(), verb = c.createConvolver(), wet = c.createGain();
+    send.type = 'highpass'; send.frequency.value = 320; send.Q.value = 0.5;
     verb.buffer = impulse(c, 2.6); wet.gain.value = 0.35;
-    mus.connect(verb); verb.connect(wet); wet.connect(m);
+    mus.connect(send); send.connect(verb); verb.connect(wet); wet.connect(m);
     var fx = c.createGain(); fx.gain.value = 0.45; fx.connect(m);
-    var lfo = c.createOscillator(), depth = c.createGain();
-    lfo.frequency.value = 5; depth.gain.value = 9; // cents
-    lfo.connect(depth); lfo.start();
     var len = c.sampleRate * 4, buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0);
     for (var i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
     // the wot's pipes are closed at the bottom: nearly pure, with a touch of the odd overtones
-    var wotWave = c.createPeriodicWave(new Float32Array(6), new Float32Array([0, 1, 0.02, 0.09, 0, 0.025]));
-    return { master: m, music: mus, sfx: fx, kit: { c: c, bus: mus, vib: depth, noise: buf, wotWave: wotWave, out: null, drone: null } };
+    var wotWave = c.createPeriodicWave(new Float32Array(6), new Float32Array([0, 1, 0.035, 0.13, 0.012, 0.045]));
+    return { master: m, music: mus, sfx: fx, kit: { c: c, bus: mus, noise: buf, wotWave: wotWave, out: null, drone: null } };
   }
 
   // the music's context, output and shared parts (renderPreview swaps in an offline one)
@@ -228,18 +228,26 @@
     lp.connect(g); g.connect(M.out);
   }
 
+  // a breath vibrato (5 Hz, up to 10 cents) that grows in as a note is held, written straight onto
+  // the note's own pitch (a shared LFO connected to every note would keep each one alive for good)
+  function vibrato(param, t, dur) {
+    var n = Math.ceil(dur * 50) + 2, curve = new Float32Array(n);
+    for (var i = 0; i < n; i++) {
+      var s = i / (n - 1) * dur;
+      curve[i] = 10 * Math.min(1, s / 0.8) * Math.sin(2 * Math.PI * 5 * s);
+    }
+    param.setValueCurveAtTime(curve, t, dur);
+  }
+
   // wot: the round Isan panpipe. Each note scoops up into pitch with a puff of breath, the breath
   // stays under the tone, and vibrato blooms on the long notes; each pipe rings on a little after
   // the next one starts.
   function wot(f, t, dur, vol) {
-    var c = M.c, o = c.createOscillator(), g = amp(c), vg = amp(c);
+    var c = M.c, o = c.createOscillator(), g = amp(c);
     o.setPeriodicWave(M.wotWave);
     o.frequency.setValueAtTime(f * 0.978, t);
     o.frequency.exponentialRampToValueAtTime(f, t + 0.12);
-    vg.gain.setValueAtTime(0, t);
-    vg.gain.setValueAtTime(0, t + 0.5);
-    vg.gain.linearRampToValueAtTime(1, t + 1.3);
-    M.vib.connect(vg); vg.connect(o.detune);
+    if (dur > 0.6) vibrato(o.detune, t + 0.45, dur - 0.15);
     g.gain.setValueAtTime(0.0001, t);
     g.gain.linearRampToValueAtTime(vol, t + 0.08);
     if (dur > 1) {
@@ -300,9 +308,10 @@
   // a low phin bass note: a rounded triangle so phone speakers still hear its overtones
   function bass(m, t, dur, vol) { ring(freq(m), t, dur, vol, 'triangle', 0.01); }
 
-  // the temple gong (khong) far across the water: a deep hum that beats slowly as it dies away
+  // the temple gong (khong) far across the water: a deep hum that beats slowly as it dies away, with
+  // the bronze's off-key overtones (so it is not lost in the drone's G and D)
   function gong(f, t, vol) {
-    [[1, 1, 5.5], [1.004, 0.7, 5], [2.01, 0.3, 3], [2.98, 0.16, 1.8], [4.12, 0.06, 0.9]].forEach(function (p) {
+    [[1, 1, 9], [1.004, 0.6, 8], [2.0, 0.22, 5], [2.76, 0.2, 3.5], [5.4, 0.08, 1.4]].forEach(function (p) {
       ring(f * p[0], t, p[2], vol * p[1], 'sine', 0.02);
     });
   }
@@ -347,7 +356,7 @@
   function begin(t) {
     var c = M.c, out = amp(c);
     out.gain.setValueAtTime(0.0001, t);
-    out.gain.linearRampToValueAtTime(1, t + 0.6);
+    out.gain.linearRampToValueAtTime(1, t + 0.25);
     out.connect(M.bus);
     M.out = out;
     M.drone = drone(c, out, t);
