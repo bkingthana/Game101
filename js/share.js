@@ -22,6 +22,7 @@
     phone: 'M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z',
     chat: 'M7.9 20A9 9 0 1 0 4 16.1L2 22Z',
     facebook: 'M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z',
+    pin: 'M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0',
   };
 
   function fontsReady() {
@@ -51,8 +52,8 @@
     ctx.fillText(str, x, y);
   }
 
-  function roundRect(ctx, x, y, w, h, r) {
-    ctx.beginPath();
+  function roundRect(ctx, x, y, w, h, r, keepPath) {
+    if (!keepPath) ctx.beginPath();
     ctx.moveTo(x + r, y);
     ctx.arcTo(x + w, y, x + w, y + h, r);
     ctx.arcTo(x + w, y + h, x, y + h, r);
@@ -154,11 +155,12 @@
     gray: ['#EDEDED', '#A6A6A6', '#6A6A6A'],
   };
   var TIERS = {
-    3: { metal: 'gold', bg: ['#3A3A3A', '#232323'], ink: '#FFFFFF', soft: '#D9D9D9', ray: '#D9B44A', rays: 0.22, leaf: '#D9B44A', laurel: true, crown: true, sparkles: 10, label: 'ระดับตำนาน', dark: true },
-    2: { metal: 'silver', bg: ['#F4FAFD', '#DCEFF8'], ink: C.charcoal, soft: '#5F6B73', ray: '#9AD4EC', rays: 0.45, leaf: '#5E8A1F', laurel: true, sparkles: 5, label: 'ระดับมืออาชีพ' },
-    1: { metal: 'bronze', bg: ['#FFFAEE', '#F6E6C6'], ink: C.charcoal, soft: '#7A6A55', ray: '#D9B44A', rays: 0.3, leaf: '#AA7F4C', laurel: false, sparkles: 2, label: 'ระดับเริ่มเก่ง' },
-    0: { metal: 'green', bg: ['#F7FBEF', '#E4F1CC'], ink: C.charcoal, soft: '#5E6B4E', ray: '#9BC53D', rays: 0.25, leaf: '#9BC53D', laurel: false, sparkles: 0, label: 'ระดับเริ่มต้น' },
-    bankrupt: { metal: 'gray', bg: ['#F5F5F5', '#E2E2E2'], ink: C.charcoal, soft: '#6E6E6E', ray: '#BDBDBD', rays: 0.2, leaf: '#9E9E9E', laurel: false, sparkles: 0, label: 'ปีหน้าเอาใหม่' },
+    // bg[1] is the lower card; glow is how much light sits behind the emblem
+    3: { metal: 'gold', bg: ['#3A3A3A', '#232323'], ink: '#FFFFFF', soft: '#D9D9D9', glow: 0.22, leaf: '#D9B44A', laurel: true, crown: true, sparkles: 10, label: 'ระดับตำนาน', dark: true },
+    2: { metal: 'silver', bg: ['#F4FAFD', '#DCEFF8'], ink: C.charcoal, soft: '#5F6B73', glow: 0.45, leaf: '#5E8A1F', laurel: true, sparkles: 5, label: 'ระดับมืออาชีพ' },
+    1: { metal: 'bronze', bg: ['#FFFAEE', '#F6E6C6'], ink: C.charcoal, soft: '#7A6A55', glow: 0.3, leaf: '#AA7F4C', laurel: false, sparkles: 2, label: 'ระดับเริ่มเก่ง' },
+    0: { metal: 'green', bg: ['#F7FBEF', '#E4F1CC'], ink: C.charcoal, soft: '#5E6B4E', glow: 0.25, leaf: '#9BC53D', laurel: false, sparkles: 0, label: 'ระดับเริ่มต้น' },
+    bankrupt: { metal: 'gray', bg: ['#F5F5F5', '#E2E2E2'], ink: C.charcoal, soft: '#6E6E6E', glow: 0.2, leaf: '#9E9E9E', laurel: false, sparkles: 0, label: 'ปีหน้าเอาใหม่' },
   };
 
   function metalGradient(ctx, x0, y0, x1, y1, m) {
@@ -181,25 +183,20 @@
     ctx.closePath();
   }
 
-  function sunburst(ctx, cx, cy, t, W, H) {
-    var glow = ctx.createRadialGradient(cx, cy, 20, cx, cy, 460);
-    glow.addColorStop(0, t.dark ? 'rgba(217,180,74,0.45)' : 'rgba(255,255,255,0.9)');
-    glow.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.fillStyle = glow;
-    ctx.fillRect(0, 0, W, H);
-    ctx.save();
-    ctx.globalAlpha = t.rays;
-    ctx.fillStyle = t.ray;
-    for (var i = 0; i < 18; i++) {
-      var a = (i / 18) * Math.PI * 2 - Math.PI / 2, s = Math.PI / 36;
-      ctx.beginPath();
-      ctx.moveTo(cx, cy);
-      ctx.lineTo(cx + Math.cos(a - s) * 900, cy + Math.sin(a - s) * 900);
-      ctx.lineTo(cx + Math.cos(a + s) * 900, cy + Math.sin(a + s) * 900);
-      ctx.closePath();
-      ctx.fill();
-    }
-    ctx.restore();
+  function hexA(hex, a) {
+    var n = parseInt(hex.slice(1), 16);
+    return 'rgba(' + (n >> 16) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')';
+  }
+
+  // soft light behind the emblem so it stands out from the panorama; brighter for higher ranks
+  function glow(ctx, cx, cy, radius, t) {
+    var g = ctx.createRadialGradient(cx, cy, 10, cx, cy, radius);
+    g.addColorStop(0, t.dark ? 'rgba(255,214,110,0.55)' : 'rgba(255,255,255,' + (0.5 + t.glow) + ')');
+    g.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.fill();
   }
 
   // a pointed leaf from (x, y) pointing along angle a
@@ -240,8 +237,128 @@
     });
   }
 
+  /* ---------- That Phanom panorama behind the emblem ----------
+     A pixel view from the Thai bank: Phra That Phanom, the Thanapun Farmcare signboard, the Mekong
+     and the Lao mountains. The time of day follows the rank: a morning mist for a first try, sunrise,
+     bright day, and the Ok Phansa night with a fire boat for the top rank. */
+  var PW = 120, PH = 58, PS = 9; // drawn small, scaled up 9x
+  var THAT_BIG = [
+    '.........y.........', '.........y.........', '.........y.........', '.........y.........',
+    '........yyY........', '........yyY........', '........yyY........', '.......yyyYY.......',
+    '........wwW........', '........wwW........', '........wyW........', '.......wwwWW.......',
+    '.......wwyWW.......', '.......wwwWW.......', '......wwwwWWW......', '......wwwyWWW......',
+    '......yyyyYYY......', '......wwwwWWW......', '.......wwwWW.......', '.......wwwWW.......',
+    '......yyyyYYY......', '.....yyyyyYYYY.....', '.....wwwwwWWWW.....', '.....wwyyyyyWW.....',
+    '.....wwyYYYyWW.....', '.....wwyYYYyWW.....', '.....wwyYYYyWW.....', '.....wwwwwwWWW.....',
+    '.....wwwwwwWWW.....', '....yyyyyyyYYYY....', '....wwwwwwwWWWW....', '....wywywywywYW....',
+    '....wwwwwwwWWWW....', '...yyyyyyyyyYYYY...', '...wwwwwwwwwWWWW...', '...wwywwywwywWWW...',
+    '...wwwwwwwwwWWWW...', '..yyyyyyyyyyyYYYY..', '..wwwwwwwwwwwWWWW..', '.wwwwwwwwwwwwWWWWW.',
+    'yyyyyyyyyyyyyYYYYYY', 'wwwwwwwwwwwwwWWWWWW',
+  ];
+  var BOAT_LIGHTS = ['.......y.......', '......y.y......', '.....y...y.....', '....y.....y....', '....yyyyyyy....',
+    '...y.......y...', '...y..yyy..y...', '..yyyyyyyyyyy..', '..y.........y..', '.yyyyyyyyyyyyy.', 'kkkkkkkkkkkkkkk'];
+  var FAR = [[8, 4, 12], [27, 6, 16], [48, 4, 11], [69, 5, 15], [92, 6, 13], [113, 4, 16]];
+  var NEAR = [[18, 4, 8], [40, 5, 10], [60, 3, 7], [82, 5, 9], [104, 4, 8]];
+  var PANO = {
+    3: { sky: ['#11173a', '#1a2150', '#262c62', '#3a3670', '#56427a'], far: '#3a3f6e', near: '#2b2e57', trees: '#1b2630', water: '#18264a', light: '#ffcf6a', bank: '#1f2c35', night: true },
+    2: { sky: ['#4fa6e6', '#68b6ee', '#82c5f2', '#a0d4f5', '#c2e4f8'], far: '#93a0c6', near: '#6f80ab', trees: '#3f6b4f', water: '#5b93a6', light: '#c9eaf2', bank: '#5aa846', sun: [100, 8, 5, '#fff1a8', '#ffd84a'], clouds: true },
+    1: { sky: ['#5d5f9e', '#9b78b0', '#e597a8', '#f8b98f', '#ffdca0'], far: '#a991bd', near: '#7a6aa2', trees: '#3e5a55', water: '#8f8fb4', light: '#ffd59a', bank: '#6a9f48', sun: [97, 25, 7, '#fff6d8', '#ffb35a'], path: true },
+    0: { sky: ['#b9dfe4', '#c9e7e3', '#d9eee0', '#e7f3da', '#f2f7da'], far: '#a8c3c8', near: '#86a8ae', trees: '#4f7a5a', water: '#86b8c2', light: '#eef8f5', bank: '#78bb58', sun: [86, 14, 4, '#fffbe6', '#fff0b8'], mist: true },
+    bankrupt: { sky: ['#7f868c', '#8d9399', '#9ba1a6', '#a9aeb2', '#b7bbbe'], far: '#9aa0a5', near: '#83898f', trees: '#56635b', water: '#78838a', light: '#c3cacd', bank: '#71865f', rain: true },
+  };
+  var THAT_DAY = { w: '#f6f2e4', W: '#cdc5ad', y: '#ecbb32', Y: '#b8861c' };
+  var THAT_NIGHT = { w: '#e9dcc0', W: '#b9a57e', y: '#ffd04a', Y: '#d79a1e' };
+
+  function peak(list, x) {
+    var best = 0;
+    list.forEach(function (p) {
+      var dx = Math.abs(x - p[0]), v = dx <= p[1] ? p[2] - Math.round((dx / p[1]) * (dx / p[1]) * 2) : p[2] - 2 - (dx - p[1]) * 3;
+      if (v > best) best = v;
+    });
+    return best;
+  }
+
+  function px(c, x, y, w, h, color) { c.fillStyle = color; c.fillRect(x, y, w, h); }
+
+  function rows(c, art, x, y, pal) {
+    art.forEach(function (row, j) {
+      for (var i = 0; i < row.length; i++) if (row[i] !== '.') px(c, x + i, y + j, 1, 1, pal[row[i]]);
+    });
+  }
+
+  function panorama(tier) {
+    var p = PANO[tier], cv = document.createElement('canvas');
+    cv.width = PW; cv.height = PH;
+    var c = cv.getContext('2d'), horizon = 30, bankTop = 44;
+    // sky in dithered bands
+    p.sky.forEach(function (col, i) {
+      var top = Math.round((i / p.sky.length) * horizon), bottom = Math.round(((i + 1) / p.sky.length) * horizon);
+      px(c, 0, top, PW, bottom - top, col);
+      if (i) for (var x = top % 2; x < PW; x += 2) px(c, x, top, 1, 1, p.sky[i - 1]);
+    });
+    if (p.night) {
+      for (var s = 0; s < 30; s++) px(c, Math.floor(hash(s * 7 + 3) * PW), Math.floor(hash(s * 11 + 1) * 18), 1, 1, s % 4 ? '#e8ecff' : '#fff3c4');
+      for (var dy = -4; dy <= 4; dy++) { var hw = Math.round(Math.sqrt(16 - dy * dy)); px(c, 100 - hw, 8 + dy, hw * 2 + 1, 1, '#fff3c9'); }
+    }
+    if (p.sun) {
+      var su = p.sun;
+      for (var sy = -su[2]; sy <= su[2]; sy++) { var sw = Math.round(Math.sqrt(su[2] * su[2] - sy * sy)); px(c, su[0] - sw, su[1] + sy, sw * 2 + 1, 1, sy < -su[2] / 2 ? su[3] : su[4]); }
+    }
+    if (p.clouds) {
+      [[26, 5], [64, 11]].forEach(function (cl) {
+        px(c, cl[0] + 3, cl[1], 6, 1, '#ffffff'); px(c, cl[0] + 1, cl[1] + 1, 11, 1, '#ffffff');
+        px(c, cl[0], cl[1] + 2, 14, 1, '#ffffff'); px(c, cl[0] + 1, cl[1] + 3, 12, 1, '#dfeaf0');
+      });
+    }
+    if (p.rain) { px(c, 6, 4, 30, 4, '#6f767c'); px(c, 10, 2, 18, 2, '#6f767c'); px(c, 70, 6, 34, 4, '#6f767c'); px(c, 76, 4, 20, 2, '#6f767c'); }
+    // Lao mountains and the far bank
+    for (var x2 = 0; x2 < PW; x2++) {
+      var f = peak(FAR, x2), n = peak(NEAR, x2);
+      if (f > 0) px(c, x2, horizon - f, 1, f, p.far);
+      if (n > 0) px(c, x2, horizon - n, 1, n, p.near);
+      var tr = 1 + Math.round(Math.sin(x2 / 2.3) + 0.6);
+      px(c, x2, horizon - tr, 1, tr, p.trees);
+    }
+    // the Mekong
+    px(c, 0, horizon, PW, bankTop - horizon, p.water);
+    for (var r = 0; r < 26; r++) {
+      var rx = Math.floor(hash(r * 5 + 2) * (PW - 4)), ry = horizon + 1 + Math.floor(hash(r * 13 + 7) * (bankTop - horizon - 2));
+      px(c, rx, ry, 2 + (r % 3), 1, p.light);
+    }
+    if (p.path) for (var gy = horizon + 1; gy < bankTop; gy += 2) px(c, p.sun[0] - 2 + (gy % 3), gy, 3 + (gy % 2), 1, '#ffe2a8');
+    if (p.mist) { c.globalAlpha = 0.6; px(c, 0, horizon - 1, PW, 3, '#ffffff'); c.globalAlpha = 1; }
+    if (p.night) {
+      // Lai Ruea Fai: the fire boat and little floating lights
+      rows(c, BOAT_LIGHTS, 84, bankTop - BOAT_LIGHTS.length - 1, { y: '#ffd65a', k: '#120c08' });
+      for (var b = 1; b < 14; b += 2) px(c, 84 + b, bankTop - 1, 1, 1, '#ffb347');
+      for (var l = 0; l < 10; l++) px(c, 4 + Math.floor(hash(l * 31) * 110), horizon + 2 + Math.floor(hash(l * 17) * 10), 1, 1, l % 2 ? '#ffcf4a' : '#ff8a2a');
+    } else {
+      px(c, 84, 38, 11, 2, '#5a3a22'); px(c, 85, 37, 9, 1, '#8a5530'); px(c, 88, 35, 1, 2, '#2f4f8a'); px(c, 87, 34, 3, 1, '#f0c43c');
+    }
+    // the Thai bank, with riverside lamps
+    px(c, 0, bankTop, PW, PH - bankTop, p.bank);
+    px(c, 0, bankTop, PW, 1, p.night ? '#3a4a52' : '#e9e2c8');
+    [30, 46, 74, 96].forEach(function (lx) {
+      px(c, lx, bankTop - 5, 1, 6, p.night ? '#4a565c' : '#6f7a80');
+      px(c, lx - 1, bankTop - 6, 3, 1, p.night ? '#ffe08a' : '#9aa3a8');
+    });
+    if (p.rain) { c.globalAlpha = 0.5; for (var d = 0; d < 60; d++) px(c, Math.floor(hash(d * 3) * PW), Math.floor(hash(d * 9) * PH), 1, 2, '#e3e8ea'); c.globalAlpha = 1; }
+    // Phra That Phanom on the left, floodlit at night, with temple trees
+    px(c, 0, bankTop - 6, 26, 7, p.night ? '#1d2a2e' : p.trees);
+    rows(c, THAT_BIG, 4, bankTop - THAT_BIG.length + 2, p.night ? THAT_NIGHT : THAT_DAY);
+    // the Thanapun Farmcare signboard on the bank, right side
+    px(c, 108, bankTop - 4, 2, 12, '#55321c');
+    px(c, 101, bankTop - 18, 16, 16, '#3b2a20');
+    px(c, 102, bankTop - 17, 14, 14, '#f4ecd2');
+    S.draw(c, 'brandSmall', 103, bankTop - 16);
+    return cv;
+  }
+
+  // cheap deterministic hash for scattered pixels
+  function hash(n) { n = (n ^ 61) ^ (n >>> 16); n = n + (n << 3); n = n ^ (n >>> 4); n = Math.imul(n, 0x27d4eb2d); return ((n ^ (n >>> 15)) >>> 0) / 4294967296; }
+
   // sparkle spots around the emblem, kept clear of the ribbon and the stars
-  var SPARKLES = [[-250, -190], [235, -230], [-335, -40], [312, -112], [-180, -300], [95, -282], [-345, 58], [338, 40], [-62, -338], [272, -8]];
+  var SPARKLES = [[-250, -190], [235, -230], [-335, -40], [312, -112], [-170, -250], [150, -255], [-345, 58], [338, 40], [-75, -262], [272, -8]];
 
   function crown(ctx, cx, bottom, w, m) {
     var h = w * 0.5, x = cx - w / 2;
@@ -344,13 +461,41 @@
   function resultCard(r) {
     return fontsReady().then(function () {
       var W = 1080, H = 1350, k = makeCanvas(W, H), ctx = k.ctx, t = TIERS[r.tier];
-      var bg = ctx.createLinearGradient(0, 0, 0, H);
-      bg.addColorStop(0, t.bg[0]); bg.addColorStop(1, t.bg[1]);
-      ctx.fillStyle = bg;
+      var HEAD = 236, PANO_Y = HEAD + 6, PANO_H = PH * PS;
+      ctx.fillStyle = t.bg[1];
       ctx.fillRect(0, 0, W, H);
 
-      var cx = W / 2, cy = 470;
-      sunburst(ctx, cx, cy, t, W, H);
+      // That Phanom behind the emblem, fading into the card below; the stupa is floodlit at night
+      ctx.drawImage(panorama(r.tier), 0, PANO_Y, PW * PS, PANO_H);
+      if (PANO[r.tier].night) {
+        var halo = ctx.createRadialGradient(122, PANO_Y + 250, 10, 122, PANO_Y + 250, 230);
+        halo.addColorStop(0, 'rgba(255,208,90,0.42)');
+        halo.addColorStop(1, 'rgba(255,208,90,0)');
+        ctx.fillStyle = halo;
+        ctx.fillRect(0, PANO_Y, 360, PANO_H);
+      }
+      var fade = ctx.createLinearGradient(0, PANO_Y + PANO_H - 120, 0, PANO_Y + PANO_H);
+      fade.addColorStop(0, hexA(t.bg[1], 0)); fade.addColorStop(1, hexA(t.bg[1], 1));
+      ctx.fillStyle = fade;
+      ctx.fillRect(0, PANO_Y + PANO_H - 120, W, 121);
+
+      // white header with the company logo large, as the CI asks for cards
+      ctx.fillStyle = C.bg;
+      ctx.fillRect(0, 0, W, HEAD);
+      ctx.fillStyle = metalGradient(ctx, 0, HEAD, W, HEAD + 6, t.metal);
+      ctx.fillRect(0, HEAD, W, 6);
+      logo(ctx, 64, 34, 176);
+      text(ctx, 'The Magic Farmcare', W - 66, 98, '700 50px ' + PIXEL, C.greenDark, 'right');
+      text(ctx, 'การ์ดผลงานประจำปี · ' + t.label, W - 66, 142, '300 26px ' + KANIT, C.muted, 'right');
+      ctx.font = '500 28px ' + KANIT;
+      var home = 'ต้นตำรับจาก อ.ธาตุพนม จ.นครพนม', hw = ctx.measureText(home).width;
+      text(ctx, home, W - 66, 192, '500 28px ' + KANIT, C.charcoal, 'right');
+      ctx.save();
+      ctx.translate(W - 66 - hw - 34, 166);
+      ctx.strokeStyle = C.greenDark; ctx.lineWidth = 2; ctx.lineJoin = 'round';
+      ctx.stroke(new Path2D(ICONS.pin));
+      ctx.beginPath(); ctx.arc(12, 10, 3, 0, Math.PI * 2); ctx.stroke();
+      ctx.restore();
 
       // the logo's fields along the bottom, inside a metal border like a trading card
       ctx.save();
@@ -362,49 +507,47 @@
       ctx.lineWidth = 10;
       ctx.strokeStyle = metalGradient(ctx, 0, 0, W, H, t.metal);
       ctx.stroke();
+      // keep the corners outside the border clean
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, 0, W, H);
+      roundRect(ctx, 21, 21, W - 42, H - 42, 39, true);
+      ctx.fillStyle = t.dark ? '#1b1b1b' : '#ffffff';
+      ctx.fill('evenodd');
+      ctx.restore();
 
-      // header: logo (white wordmark on the dark card) and the game's name
-      var img = document.getElementById(t.dark ? 'brand-img' : 'brand-img-color');
-      if (img && img.complete && img.naturalWidth && !/^file:/.test(img.src)) {
-        ctx.imageSmoothingEnabled = true;
-        ctx.drawImage(img, 70, 62, 96, Math.round((96 * img.naturalHeight) / img.naturalWidth));
-        ctx.imageSmoothingEnabled = false;
-      } else {
-        sprite(ctx, 'brand', 78, 66, 5);
-      }
-      text(ctx, 'The Magic Farmcare', W - 70, 104, '700 40px ' + PIXEL, t.dark ? C.gold : C.greenDark, 'right');
-      text(ctx, 'การ์ดผลงานประจำปี · ' + t.label, W - 70, 144, '300 26px ' + KANIT, t.soft, 'right');
-
+      var cx = W / 2, cy = 520;
+      glow(ctx, cx, cy - 20, 330, t);
       emblem(ctx, cx, cy, r, t);
       SPARKLES.slice(0, t.sparkles).forEach(function (p, i) {
-        sparkle(ctx, cx + p[0], cy + p[1], 14 + (i % 3) * 8, t.dark ? '#FFF1BF' : '#FFFFFF');
+        if (cy + p[1] > HEAD + 34) sparkle(ctx, cx + p[0], cy + p[1], 14 + (i % 3) * 8, t.dark ? '#FFF1BF' : '#FFFFFF');
       });
       ribbon(ctx, cx, cy + 100, 620, 92, t, r.rank);
 
       // stars and money
       if (r.tier !== 'bankrupt') {
-        for (var s = 0; s < 3; s++) sprite(ctx, s < r.stars ? 'star' : 'starOff', cx - 145 + s * 105, 712, 9);
+        for (var s = 0; s < 3; s++) sprite(ctx, s < r.stars ? 'star' : 'starOff', cx - 145 + s * 105, 728, 9);
       } else {
-        text(ctx, 'เงินทุนหมดก่อนครบปี', cx, 768, '500 36px ' + KANIT, t.soft);
+        text(ctx, 'เงินทุนหมดก่อนครบปี', cx, 784, '500 36px ' + KANIT, t.soft);
       }
-      text(ctx, 'เงินสุดท้าย', cx, 852, '300 28px ' + KANIT, t.soft);
+      text(ctx, 'เงินสุดท้าย', cx, 864, '300 28px ' + KANIT, t.soft);
       ctx.font = '700 128px ' + KANIT;
       var amount = r.money.toLocaleString('en-US'), aw = ctx.measureText(amount).width;
       ctx.font = '400 40px ' + KANIT;
       var bw = ctx.measureText(' บาท').width, ax = cx - (aw + bw) / 2;
-      text(ctx, amount, ax, 968, '700 128px ' + KANIT, t.dark ? C.gold : t.ink, 'left');
-      text(ctx, ' บาท', ax + aw, 968, '400 40px ' + KANIT, t.soft, 'left');
+      text(ctx, amount, ax, 978, '700 128px ' + KANIT, t.dark ? C.gold : t.ink, 'left');
+      text(ctx, ' บาท', ax + aw, 978, '400 40px ' + KANIT, t.soft, 'left');
 
       // three stats from this player's year
-      var tw = 290, gap = 25, tx0 = (W - tw * 3 - gap * 2) / 2, ty = 1006, th = 108;
+      var tw = 290, gap = 25, tx0 = (W - tw * 3 - gap * 2) / 2, ty = 1010, th = 104;
       statTile(ctx, tx0, ty, tw, th, t, r.cropIcon, r.totalKg.toLocaleString('en-US') + ' กก.', 'ผลผลิตทั้งปี');
       statTile(ctx, tx0 + tw + gap, ty, tw, th, t, { name: 'bottle', over: { x: '#2f74c9' } }, r.correct + '/' + r.treated + ' ครั้ง', 'เลือกยาถูก');
       statTile(ctx, tx0 + (tw + gap) * 2, ty, tw, th, t, { name: 'coin' }, (r.profit >= 0 ? '+' : '') + r.profit.toLocaleString('en-US'), 'กำไรทั้งปี (บาท)');
 
       // footer from the CI
-      text(ctx, 'มาแข่งกัน เล่นฟรีที่ ' + host(), cx, 1170, '500 32px ' + KANIT, t.dark ? C.gold : C.greenDark);
-      text(ctx, TAGLINE, cx, 1216, '600 26px ' + KANIT, t.dark ? '#FFFFFF' : C.charcoal);
-      contactLine(ctx, cx, 1256, 22, 'center', t.dark ? t.soft : C.charcoal);
+      text(ctx, 'มาแข่งกัน เล่นฟรีที่ ' + host(), cx, 1168, '500 32px ' + KANIT, t.dark ? C.gold : C.greenDark);
+      text(ctx, TAGLINE, cx, 1212, '600 26px ' + KANIT, t.dark ? '#FFFFFF' : C.charcoal);
+      contactLine(ctx, cx, 1252, 22, 'center', t.dark ? t.soft : C.charcoal);
       return k.canvas;
     });
   }
