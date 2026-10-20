@@ -1,16 +1,12 @@
 /* The Magic Farmcare - the title cover, a 160 x 120 pixel picture scaled up with CSS like the farm scene.
-   A 90s-style title picture in the Thanapun Farmcare colours. Three versions for the owner to choose from,
-   picked with ?cover=A|B|C in the page address (B when there is none):
-     A  Lung Phan from the waist up, smiling over a woven basket of harvest, in front of banded fields
-     B  one isometric farm plot floating in the sky: vegetable and rice rows, a thatched hut, a water jar
-     C  the plot from B with a small Lung Phan standing on it, holding the basket
-   Lung Phan wears the hat, shirt and skin colours of his in-game sprites; everything else is in CI colours,
-   and nothing carries a brand, badge or label.
-   Still parts are painted once; each frame redraws only the small moving bits. createCover(canvas) has
-   start() and stop() like createScene, and draws one still frame when the viewer prefers reduced motion. */
+   A 90s-style title picture in the Thanapun Farmcare colours: one isometric farm plot floating in the sky,
+   with rows of green vegetables and golden rice, a thatched field hut and a clay water jar. Nothing in it
+   carries a brand, badge or label.
+   Still parts are painted once; each frame redraws only the small moving bits: the plot bobbing, clouds
+   drifting and a gust of wind through the crops. createCover(canvas) has start() and stop() like
+   createScene, and draws one still frame when the viewer prefers reduced motion. */
 (function (root) {
   var MF = (root.MF = root.MF || {});
-  var P = MF.sprites.PAL; // Lung Phan's in-game colours
   var W = 160, H = 120;
   var FRAME_MS = 70; // same pace as the farm scene
 
@@ -24,7 +20,6 @@
     brown: ['#c9a070', '#aa7f4c', '#7a5631', '#5c4026'],
     ink: '#4d4d4d', dark: '#2f2f2f', cream: '#f4ecd2', white: '#ffffff',
   };
-  var LUNG = { hat: [P.y, P.Y], shirt: [P.l, P.g, P.G], skin: [P.n, P.N], hair: P.h, eye: P.k };
 
   /* ---------- pixel toolkit ---------- */
   function rect(ctx, x, y, w, h, c) { ctx.fillStyle = c; ctx.fillRect(x, y, w, h); }
@@ -133,7 +128,7 @@
     ctx.drawImage(img, Math.round(x), y);
   }
 
-  /* ---------- the floating plot (B and C) ---------- */
+  /* ---------- the floating plot ---------- */
   // an isometric diamond: p runs from the left corner to the top corner, q from the left corner to the bottom
   var ISO = { x: 18, y: 63, a: 62, b: 31, depth: 17 };
   function iso(p, q) { return [ISO.x + ISO.a * (p + q), ISO.y - ISO.b * p + ISO.b * q]; }
@@ -245,266 +240,42 @@
       o.x = s[0]; o.y = s[1];
       o.sort = o.depth ? iso(o.depth[0], o.depth[1])[1] : o.y; // a big thing sorts by the middle of its footprint
     });
-    return list;
+    return list.sort(function (a, b) { return a.sort - b.sort || a.x - b.x; }); // back to front, once
   }
 
-  function buildPlot() {
+  function build() {
     var L = {
-      plot: canvas(W, H), veg: [sprite(VEG, CROP_PAL), sprite(lean(VEG, 2), CROP_PAL)],
+      sky: canvas(W, H), plot: canvas(W, H), veg: [sprite(VEG, CROP_PAL), sprite(lean(VEG, 2), CROP_PAL)],
       rice: [sprite(RICE, CROP_PAL), sprite(lean(RICE, 4), CROP_PAL)], hut: paintHut(), jar: paintJar(),
       things: plotThings(), clouds: [cloud(30), cloud(22), cloud(36)],
     };
+    bands(L.sky.getContext('2d'), [[0, C.sky[2]], [30, C.sky[1]], [78, C.sky[0]]], 0, H);
     paintPlot(L.plot.getContext('2d'));
     return L;
   }
 
   function bob(t, period) { return reduceMotion ? 0 : Math.round(Math.sin((t / period) * Math.PI * 2) * 1.5); }
 
-  // draw the plot and everything on it back to front; a gust of wind runs across the crops
-  function drawPlot(ctx, t, L, dy, extra) {
-    ctx.drawImage(L.plot, 0, dy);
-    var things = extra ? L.things.concat(extra) : L.things;
-    things.slice().sort(function (a, b) { return a.sort - b.sort || a.x - b.x; }).forEach(function (o) {
-      var x = Math.round(o.x), y = Math.round(o.y) + dy;
-      var gust = !reduceMotion && Math.sin(t / 700 - (o.p + o.q) * 5) > 0.55 ? 1 : 0;
-      if (o.kind === 'veg') ctx.drawImage(L.veg[gust], x - 3, y - 4);
-      else if (o.kind === 'rice') ctx.drawImage(L.rice[gust], x - 3, y - 6);
-      else if (o.draw) o.draw(ctx, x, y, t);
-      else ctx.drawImage(L[o.kind].img, x - L[o.kind].ox, y - L[o.kind].oy);
-    });
-  }
-
-  function plotSky(ctx) { bands(ctx, [[0, C.sky[2]], [30, C.sky[1]], [78, C.sky[0]]], 0, H); }
-
   // the sky, two clouds behind the plot, the plot bobbing slowly, one cloud drifting past in front
-  function drawFloating(ctx, t, L, extra) {
+  function draw(ctx, t, L) {
     ctx.drawImage(L.sky, 0, 0);
     drift(ctx, L.clouds[0], 8, 10, 0.004, t);
     drift(ctx, L.clouds[1], 122, 30, 0.0028, t);
-    drawPlot(ctx, t, L, bob(t, 3600), extra);
+    drawPlot(ctx, t, L, bob(t, 3600));
     drift(ctx, L.clouds[2], 54, 100, 0.006, t);
   }
 
-  var B = {
-    build: function () {
-      var L = buildPlot();
-      L.sky = canvas(W, H); plotSky(L.sky.getContext('2d'));
-      return L;
-    },
-    draw: function (ctx, t, L) { drawFloating(ctx, t, L); },
-  };
-
-  /* ---------- C: Lung Phan standing on the plot ---------- */
-  // small Lung Phan facing us, his basket of rice, corn and greens held in front
-  var LUNG_SMALL = [
-    '.....yy.....',
-    '...yyYYyy...',
-    '.yyyyyyyyyy.',
-    'YYYYYYYYYYYY',
-    '...hnnnnh...',
-    '...nknnkn...',
-    '...nnnnnn...',
-    '...nhhhhn...',
-    '....nnnn....',
-    '..GgggggG...',
-    '.ggggggggg..',
-    'ng4.15.3.gn.',
-    'n444115333n.',
-    '.bbbbbbbbb..',
-    '.bBbBbBbBb..',
-    '..bBbBbBb...',
-    '...ggggg....',
-    '...CC.CC....',
-    '...CC.CC....',
-    '...hh.hh....',
-  ];
-  var LUNG_SMALL_PAL = {
-    y: LUNG.hat[0], Y: LUNG.hat[1], h: LUNG.hair, n: LUNG.skin[0], k: LUNG.eye, g: LUNG.shirt[1], G: LUNG.shirt[2],
-    C: C.dark, b: C.brown[1], B: C.brown[2], 1: C.gold[0], 5: C.gold[1], 3: C.green[1], 4: C.green[2],
-  };
-
-  function outlined(img, c) {
-    var cv = canvas(img.width + 2, img.height + 2), ctx = cv.getContext('2d');
-    [[0, 1], [2, 1], [1, 0], [1, 2]].forEach(function (o) { ctx.drawImage(img, o[0], o[1]); });
-    ctx.globalCompositeOperation = 'source-in';
-    rect(ctx, 0, 0, cv.width, cv.height, c);
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.drawImage(img, 1, 1);
-    return cv;
-  }
-
-  var Cvar = {
-    build: function () {
-      var L = B.build();
-      L.lung = outlined(sprite(LUNG_SMALL, LUNG_SMALL_PAL), C.ink);
-      var spot = iso(0.36, 0.51), img = L.lung, waist = 17; // outlined rows above the legs
-      L.lungAt = { kind: 'lung', p: 0.36, q: 0.51, x: spot[0], y: spot[1], sort: spot[1], draw: function (ctx, x, y, t) {
-        // he breathes: everything above the legs sinks a pixel now and then
-        var breathe = !reduceMotion && Math.floor(t / 900) % 2 ? 1 : 0, top = y - img.height + 2;
-        ctx.drawImage(img, 0, waist, img.width, img.height - waist, x - 7, top + waist, img.width, img.height - waist);
-        ctx.drawImage(img, 0, 0, img.width, waist, x - 7, top + breathe, img.width, waist);
-      } };
-      return L;
-    },
-    draw: function (ctx, t, L) { drawFloating(ctx, t, L, [L.lungAt]); },
-  };
-
-  /* ---------- A: Lung Phan's portrait ---------- */
-  function paintLung() {
-    var hat = LUNG.hat, shirt = LUNG.shirt, skin = LUNG.skin, out = [];
-    // body: plain green shirt with an open collar
-    var body = new Grid();
-    body.poly([[42, 121], [44, 84], [50, 74], [68, 67], [92, 67], [110, 74], [116, 84], [118, 121]], function (x, y, nx) {
-      return nx > 0.78 ? shirt[2] : shirt[1];
-    });
-    body.poly([[72, 66], [88, 66], [80, 76]], skin[1]);
-    body.line(72, 67, 79, 76, shirt[2]); body.line(88, 67, 81, 76, shirt[2]);
-    out.push(body.outline(C.ink));
-    // forearms reaching round to the basket
-    var arms = new Grid();
-    arms.poly([[44, 84], [52, 84], [56, 97], [47, 99]], skin[0]);
-    arms.poly([[116, 84], [108, 84], [104, 97], [113, 99]], skin[1]);
-    arms.rect(43, 80, 10, 6, shirt[1]); arms.rect(107, 80, 10, 6, shirt[2]); // sleeves
-    out.push(arms.outline(C.ink));
-    // the head: ears, face, hair under the hat
-    var head = new Grid();
-    head.ellipse(64.5, 49, 3.5, 4.5, skin[1]); head.ellipse(95.5, 49, 3.5, 4.5, skin[1]);
-    head.rect(73, 58, 14, 9, skin[1]); // neck
-    head.ellipse(80, 46, 15.5, 17, function (x, y, nx, ny) { return nx > 0.62 || ny > 0.78 ? skin[1] : skin[0]; });
-    out.push(head.outline(C.ink));
-    // the straw hat: a wide shallow cone, weave lines, a dark band where it meets the head
-    var cap = new Grid();
-    cap.poly([[80, 4], [124, 30], [120, 35], [40, 35], [36, 30]], function (x, y, nx, ny) {
-      if (y >= 32) return hat[1];
-      var ring = Math.abs(((y - 4) * 46) / 26 - Math.abs(x - 80));
-      if (Math.abs(x - 80) % 9 === 0 && y > 9) return hat[1];
-      return nx < -0.2 && ring > 4 ? '#f6d566' : hat[0];
-    });
-    out.push(cap.outline(C.ink));
-    return out;
-  }
-
-  // the face itself, drawn over the head pixel by pixel: shadow of the brim, brows, eyes, nose, moustache, smile
-  function paintFace(ctx, eyesShut) {
-    var n = LUNG.skin, h = LUNG.hair, k = LUNG.eye;
-    function px(x, y, c) { rect(ctx, x, y, 1, 1, c); }
-    for (var x = 66; x <= 94; x++) { px(x, 36, n[1]); if (x > 67 && x < 93) px(x, 37, n[1]); } // brim shadow
-    rect(ctx, 65, 36, 2, 9, h); rect(ctx, 93, 36, 2, 9, h); // hair at the temples
-    rect(ctx, 69, 41, 6, 1, h); px(69, 42, h); rect(ctx, 85, 41, 6, 1, h); px(90, 42, h); // brows
-    if (eyesShut) {
-      rect(ctx, 70, 45, 4, 1, k); rect(ctx, 86, 45, 4, 1, k);
-    } else {
-      rect(ctx, 70, 43, 3, 4, k); rect(ctx, 87, 43, 3, 4, k);
-      px(70, 43, C.white); px(87, 43, C.white); // catchlights
-    }
-    px(68, 46, n[1]); px(92, 46, n[1]); // smile lines at the eyes
-    rect(ctx, 79, 47, 2, 3, n[1]); px(78, 50, n[1]); px(81, 50, n[1]); // nose
-    rect(ctx, 73, 51, 14, 2, h); px(72, 52, h); px(87, 52, h); px(80, 51, n[1]); // moustache
-    rect(ctx, 74, 54, 12, 1, k); // the smile
-    rect(ctx, 75, 55, 10, 2, C.white); px(74, 55, k); px(85, 55, k);
-    rect(ctx, 76, 57, 8, 1, C.brown[2]); px(75, 57, k); px(84, 57, k);
-    rect(ctx, 77, 58, 6, 1, k);
-    px(70, 51, n[1]); px(89, 51, n[1]); // cheeks
-  }
-
-  // the woven basket and the harvest in it
-  function paintBasket() {
-    var out = [];
-    var goods = new Grid();
-    // rice: a few stalks standing up on the left, their heavy golden heads drooping over
-    [[51, 77], [55, 73], [60, 71], [65, 73]].forEach(function (tip) {
-      goods.line(61, 92, tip[0], tip[1], C.gold[2]);
-      for (var k = 0; k < 6; k++) {
-        var gx = Math.round(tip[0] - k * 1.1), gy = Math.round(tip[1] + k * 0.8 + k * k * 0.16);
-        goods.rect(gx - 1, gy, 2, 2, function (x, y) { return y === gy ? C.gold[0] : C.gold[1]; });
-      }
-    });
-    // two corn cobs in their husks
-    [[74, 79, -0.25], [84, 80, 0.2]].forEach(function (c) {
-      goods.ellipse(c[0], c[1], 4.5, 10, function (x, y, nx) { return (x + y * 2) % 4 === 0 ? C.gold[2] : nx < -0.3 ? C.gold[0] : C.gold[1]; });
-      goods.poly([[c[0] - 5, c[1] + 3], [c[0] - 1, c[1] + 12], [c[0] - 7, c[1] + 12]], C.green[1]);
-      goods.poly([[c[0] + 5, c[1] + 3], [c[0] + 1, c[1] + 12], [c[0] + 7, c[1] + 12]], C.green[2]);
-    });
-    // a head of cabbage on the right
-    goods.ellipse(99, 85, 11, 9, function (x, y, nx, ny) {
-      var vein = Math.abs(x - 99 - ny * 3) < 0.6 || Math.abs(y - 86 + nx * 4) < 0.6;
-      return vein ? C.green[0] : lit(C.green, nx, ny, 0.3);
-    });
-    out.push(goods.outline(C.ink));
-    var basket = new Grid();
-    basket.poly([[45, 92], [115, 92], [109, 121], [51, 121]], function (x, y) {
-      var row = Math.floor((y - 92) / 3), weft = (y - 92) % 3 === 2;
-      if (weft) return C.brown[2];
-      return (x + row * 2) % 4 < 2 ? (x < 64 ? C.brown[0] : C.brown[1]) : C.brown[2];
-    });
-    basket.rect(43, 89, 74, 4, function (x, y) { return (x + y) % 3 === 0 ? C.brown[1] : C.brown[0]; }); // rim
-    out.push(basket.outline(C.ink));
-    // hands over the rim
-    var hands = new Grid();
-    hands.ellipse(49, 92, 4, 3.5, LUNG.skin[0]); hands.ellipse(111, 92, 4, 3.5, LUNG.skin[1]);
-    out.push(hands.outline(C.ink));
-    return out;
-  }
-
-  var A = {
-    build: function () {
-      var L = { bg: canvas(W, H), clouds: [cloud(34), cloud(24)] };
-      var bg = L.bg.getContext('2d');
-      bands(bg, [[0, C.sky[2]], [20, C.sky[1]], [44, C.sky[0]]], 0, 64);
-      // a plain distant line of trees, then fields in bands
-      var trees = new Grid();
-      for (var x = 0; x < W; x++) {
-        var top = 58 - Math.round(Math.abs(Math.sin(x / 7.5)) * 4 + Math.sin(x / 3.1));
-        for (var y = top; y < 66; y++) trees.set(x, y, y === top ? C.green[1] : C.green[2]);
-      }
-      trees.paint(bg);
-      bands(bg, [[66, C.green[1]], [80, C.gold[1]], [92, C.green[0]], [104, C.green[1]]], 66, H);
-      for (var r = 70; r < H; r += 5) rect(bg, 0, r, W, 1, r < 80 || r >= 104 ? C.green[2] : r < 92 ? C.gold[2] : C.green[1]);
-      L.figure = canvas(W, H);
-      var fc = L.figure.getContext('2d');
-      paintLung().forEach(function (g) { g.paint(fc); });
-      L.face = canvas(W, H); paintFace(L.face.getContext('2d'), false);
-      L.blink = canvas(W, H); paintFace(L.blink.getContext('2d'), true);
-      L.basket = canvas(W, H);
-      paintBasket().forEach(function (g) { g.paint(L.basket.getContext('2d')); });
-      return L;
-    },
-    draw: function (ctx, t, L) {
-      ctx.drawImage(L.bg, 0, 0);
-      drift(ctx, L.clouds[0], 10, 8, 0.004, t);
-      drift(ctx, L.clouds[1], 110, 24, 0.003, t);
-      // he breathes: shoulders and head rise a pixel, the basket stays in his hands
-      var up = !reduceMotion && Math.sin(t / 700) > 0.2 ? -1 : 0;
-      var shut = !reduceMotion && t % 4200 < 140;
-      ctx.drawImage(L.figure, 0, up);
-      ctx.drawImage(shut ? L.blink : L.face, 0, up);
-      ctx.drawImage(L.basket, 0, 0);
-    },
-  };
-
   /* ---------- the controller ---------- */
-  var VARIANTS = { A: A, B: B, C: Cvar };
-
-  function choice(v) {
-    if (!v) {
-      var m = /[?&]cover=([abc])\b/i.exec((root.location && root.location.search) || '');
-      v = m ? m[1] : 'B';
-    }
-    v = String(v).toUpperCase();
-    return VARIANTS[v] ? v : 'B';
-  }
-
-  // createCover(canvas) draws the version chosen in the address; createCover(canvas, 'A') forces one
-  function createCover(cv, which) {
+  function createCover(cv) {
     cv.width = W;
     cv.height = H;
     var ctx = cv.getContext('2d');
     ctx.imageSmoothingEnabled = false;
-    var art = VARIANTS[choice(which)], layers = null, running = false, last = 0;
+    var layers = null, running = false, last = 0;
 
     function render(t) {
-      if (!layers) layers = art.build();
-      art.draw(ctx, t, layers);
+      if (!layers) layers = build();
+      draw(ctx, t, layers);
     }
 
     function loop(now) {
