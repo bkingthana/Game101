@@ -25,6 +25,7 @@
     storm: ['#66757f', '#7f8d97', '#99a6ae'],
     fog: ['#b9c6cb', '#c9d3d6', '#d8e0e2'],
     drought: ['#ee9c50', '#f3b874', '#f7d39b'],
+    night: ['#28366e', '#33427c', '#43538c'], // darkened further by the night overlay
   };
   var PLANT_ORDER = [0, 8, 4, 11, 2, 6, 9, 1, 5, 10, 3, 7];
   var DIGITS = {
@@ -198,30 +199,48 @@
   }
 
   /* The Mekong runs down the right side, widening toward the viewer. It rises and turns muddy in
-     the rainy season and drops in the hot season, leaving a sandbar. */
+     the rainy season (up to the grass) and drops in the hot season, leaving a sandbar. Water hyacinth drifts
+     downstream, faster and thicker when the river is high. */
   var RIVER = {
-    rain: { shift: -4, water: '#7a7552', light: '#c4bb92', ripples: 16 },
-    cool: { shift: 0, water: '#5b93a6', light: '#8bbdca', ripples: 9 },
-    hot: { shift: 5, water: '#6aa2b0', light: '#9fcad3', ripples: 9 },
+    rain: { shift: -4, water: '#7f876a', deep: '#6c7558', light: '#c3c7a2', bankColor: '#6b5a3e', ripples: 12, weeds: 4, speed: 1.7 },
+    cool: { shift: 0, water: '#5b93a6', deep: '#4d8496', light: '#8bbdca', ripples: 9, weeds: 1, speed: 1 },
+    hot: { shift: 5, water: '#6aa2b0', deep: '#5d94a3', light: '#9fcad3', ripples: 8, weeds: 1, speed: 0.8 },
   };
 
   function riverEdge(y, shift) { return Math.round(146 - (y - 33) * 0.21) + shift; }
 
-  function drawRiver(ctx, t, season) {
+  function drawRiver(ctx, t, season, night) {
     var r = RIVER[season] || RIVER.cool;
+    var tt = reduceMotion ? 0 : t;
     for (var y = 33; y < H; y++) {
       var bank = riverEdge(y, 0), edge = riverEdge(y, r.shift);
       var sand = Math.min(bank, edge) - 2;
-      rect(ctx, sand, y, W - sand, 1, '#d6c08c');
+      rect(ctx, sand, y, W - sand, 1, r.bankColor || '#d6c08c'); // high water leaves only wet mud
       rect(ctx, edge, y, W - edge, 1, r.water);
+      // the deeper channel, its edge wavering with the current
+      var deep = edge + Math.round((W - edge) * 0.5 + Math.sin(y / 3 - tt / 600) * 1.5);
+      rect(ctx, deep, y, W - deep, 1, r.deep);
       rect(ctx, edge, y, 1, 1, r.light); // wet edge of the water
     }
-    var tt = reduceMotion ? 0 : t;
+    // small wave crests riding the current toward the viewer
     for (var i = 0; i < r.ripples; i++) {
-      var ry = 36 + Math.floor((i * 4.3 + tt / 90) % 62);
-      rect(ctx, riverEdge(ry, r.shift) + 3 + Math.floor(hash(i * 5) * 12), ry, 4, 1, r.light);
+      var ry = 35 + Math.floor((i * 5.3 + tt * r.speed / 90) % 62);
+      var rx = riverEdge(ry, r.shift) + 2 + Math.floor(hash(i * 5) * (W - riverEdge(ry, r.shift) - 6));
+      rect(ctx, rx, ry + 1, 1, 1, r.light); rect(ctx, rx + 1, ry, 2, 1, r.light); rect(ctx, rx + 3, ry + 1, 1, 1, r.light);
     }
-    // long-tail boat drifting on the river
+    // water hyacinth clumps with a lilac flower
+    for (var k = 0; k < r.weeds; k++) {
+      var wy = 34 + Math.floor((k * 17 + 8 + tt * r.speed / 140) % 64);
+      var we = riverEdge(wy, r.shift);
+      var wx = we + 2 + Math.floor(hash(k * 13 + 3) * Math.max(1, W - we - 8));
+      rect(ctx, wx + 1, wy, 3, 1, '#4f9a3c');
+      rect(ctx, wx, wy + 1, 5, 1, '#2f6e32');
+      rect(ctx, wx + 1, wy + 1, 1, 1, '#6fbf4a');
+      rect(ctx, wx + 1, wy + 2, 3, 1, '#2f6e32');
+      rect(ctx, wx + 2, wy - 1, 1, 1, '#b48ad6');
+    }
+    // long-tail boat drifting on the river (moored at night, when the fire boats come)
+    if (night) return;
     var by = Math.round(58 + Math.sin(tt / 2400) * 10), bob = reduceMotion ? 0 : Math.round(Math.sin(tt / 500));
     var bx = riverEdge(by, r.shift) + 6;
     rect(ctx, bx, by + bob, 11, 2, '#5a3a22');
@@ -350,7 +369,131 @@
     ctx.globalAlpha = 1;
   }
 
+  /* ---------- farm life ---------- */
+
+  var BUFFALO = { h: '#3d3d44', H: '#5d5d68', W: '#d8cfb8' };
+
+  // a water buffalo grazing on the bank with an egret riding on its back, and Lung Phan on the path
+  function drawLife(ctx, t, view) {
+    var tt = reduceMotion ? 0 : t;
+    var bx = 117 + Math.round(Math.sin(tt / 9000) * 8);
+    var right = Math.cos(tt / 9000) > 0;
+    var lookUp = !reduceMotion && tt % 7000 > 5600;
+    var name = (lookUp ? 'buffaloUp' : 'buffaloGraze') + (right ? 'R' : '');
+    S.draw(ctx, name, bx, 34, BUFFALO);
+    S.draw(ctx, 'egretStand', bx + (right ? 4 : 6), 29);
+
+    // egrets wade in rice paddies during the rainy season
+    if (view.season === 'rain') {
+      view.plots.forEach(function (p, i) {
+        if (p.use === 'rice') S.draw(ctx, 'egretStand', PLOT_RECTS[i].x + 50, PLOT_RECTS[i].y + 14);
+      });
+    }
+
+    // Lung Phan walks the path; at night he stops by the river to watch the fire boats
+    var fx = view.night ? 62 : 41 + Math.round(Math.sin(tt / 7000) * 19);
+    var walking = !view.night && !reduceMotion;
+    S.draw(ctx, walking && Math.floor(t / 220) % 2 ? 'farmerB' : 'farmerA', fx, 35);
+    if (view.stage === 'care' && !view.night) { rect(ctx, fx + 4, 38, 2, 3, '#7d8a92'); rect(ctx, fx + 5, 37, 1, 1, '#c9412f'); } // sprayer tank
+  }
+
+  // a small flock of egrets crosses the sky now and then
+  function drawBirds(ctx, t, view) {
+    if (reduceMotion || view.weather === 'flood') return;
+    var p = (t % 26000) / 9000;
+    if (p >= 1) return;
+    var flap = Math.floor(t / 180) % 2 ? 'egretUp' : 'egretDown';
+    [[0, 0], [-7, 3], [-12, -2]].forEach(function (o, n) {
+      var x = -12 + p * (W + 24) + o[0], y = 17 + Math.round(Math.sin(p * 6 + n) * 1.5) + o[1];
+      S.draw(ctx, (Math.floor(t / 180) + n) % 2 ? 'egretUp' : flap, x, y);
+    });
+  }
+
+  /* ---------- Ok Phansa night: Lai Ruea Fai, the illuminated boats of Nakhon Phanom ---------- */
+
+  // lights tracing a stupa on a raft
+  var FIRE_BOAT = [
+    '.......y.......',
+    '.......o.......',
+    '......y.y......',
+    '......o.o......',
+    '.....y...y.....',
+    '....o.....o....',
+    '....yoyoyoy....',
+    '...o.......o...',
+    '...y..yoy..y...',
+    '...o..o.o..o...',
+    '..yoyoyoyoyoy..',
+    '..o.........o..',
+    '.yoyoyoyoyoyoy.',
+    'kkkkkkkkkkkkkkk',
+    '.kkkkkkkkkkkkk.',
+  ];
+
+  function drawNight(ctx, t, view) {
+    var tt = reduceMotion ? 0 : t;
+    ctx.globalAlpha = 0.58;
+    rect(ctx, 0, 0, W, H, '#0a1030');
+    ctx.globalAlpha = 1;
+
+    // stars above the mountains, and the full moon of Ok Phansa rising over Laos
+    for (var i = 0; i < 26; i++) {
+      var sx = Math.floor(hash(i * 7 + 3) * W), sy = Math.floor(hash(i * 11 + 1) * 22);
+      if (sy >= 33 - peakHeight(FAR_PEAKS, sx)) continue;
+      if (!reduceMotion && (Math.floor(t / 450) + i) % 7 === 0) continue;
+      rect(ctx, sx, sy, 1, 1, i % 4 ? '#e8ecff' : '#fff3c4');
+    }
+    for (var dy = -4; dy <= 4; dy++) {
+      var hw = Math.round(Math.sqrt(16 - dy * dy));
+      rect(ctx, 126 - hw, 9 + dy, hw * 2 + 1, 1, '#fff3c9');
+    }
+    rect(ctx, 124, 8, 2, 1, '#e6d9a8'); rect(ctx, 127, 11, 1, 1, '#e6d9a8');
+
+    // Phra That Phanom is floodlit at night: a soft halo around its outline, then the stupa itself
+    ctx.globalAlpha = 0.22;
+    [[-1, 0], [1, 0], [0, -1], [-2, 0], [2, 0], [0, -2]].forEach(function (o) {
+      THAT.forEach(function (row, y) {
+        for (var x = 0; x < row.length; x++) if (row[x] !== '.') rect(ctx, THAT_X + x + o[0], THAT_Y + y + o[1], 1, 1, '#f6c95a');
+      });
+    });
+    ctx.globalAlpha = 0.9;
+    THAT.forEach(function (row, y) {
+      for (var x = 0; x < row.length; x++) if (row[x] !== '.') rect(ctx, THAT_X + x, THAT_Y + y, 1, 1, THAT_PAL[row[x]]);
+    });
+    ctx.globalAlpha = 1;
+
+    var r = RIVER[view.season] || RIVER.cool;
+    // little floating lights drifting downstream
+    for (var k = 0; k < 7; k++) {
+      var ly = 36 + Math.floor((k * 9.1 + tt / 160) % 60);
+      var lx = riverEdge(ly, r.shift) + 2 + Math.floor(hash(k * 29 + 7) * (W - riverEdge(ly, r.shift) - 4));
+      rect(ctx, lx, ly, 1, 1, (Math.floor(t / 300) + k) % 3 ? '#ffcf4a' : '#ff8a2a');
+    }
+
+    // the fire boat drifts down the river, its lights flickering and reflected in the water
+    var by = 50 + Math.floor((tt / 1400) % 30), bx = riverEdge(by, r.shift) + 3;
+    var top = by - FIRE_BOAT.length + 2, flick = Math.floor(t / 260) % 2;
+    FIRE_BOAT.forEach(function (row, y) {
+      for (var x = 0; x < row.length; x++) {
+        var ch = row[x];
+        if (ch === '.') continue;
+        var c = ch === 'k' ? '#1c140e' : ((ch === 'y') !== !!((x + y + flick) % 2) ? '#ffd65a' : '#ff8a2a');
+        rect(ctx, bx + x, top + y, 1, 1, c);
+      }
+    });
+    ctx.globalAlpha = 0.5;
+    for (var c2 = 1; c2 < 14; c2 += 2) {
+      var len = 3 + Math.floor(hash(c2 * 13 + Math.floor(t / 300)) * 4);
+      for (var k = 0; k < len; k += 2) {
+        var wob = reduceMotion ? 0 : Math.round(Math.sin(t / 250 + c2 + k) * 0.8);
+        rect(ctx, bx + c2 + wob, top + FIRE_BOAT.length + k, 1, 1, c2 % 4 ? '#ffb347' : '#ffd65a');
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+
   function skyFor(view) {
+    if (view.night) return SKY.night;
     if (view.weather === 'flood') return SKY.storm;
     if (view.weather === 'humid') return SKY.fog;
     if (view.weather === 'drought') return SKY.drought;
@@ -369,19 +512,24 @@
       var sky = skyFor(view);
       drawSky(ctx, sky);
       var stormy = view.weather === 'flood' || view.weather === 'rainLight' || view.weather === 'humid';
-      if (!stormy) drawSun(ctx, 112, 9, view.season === 'hot' || view.weather === 'drought');
-      var drift = reduceMotion ? 0 : t / 260;
-      drawCloud(ctx, ((drift + 20) % (W + 40)) - 30, 4, stormy);
-      drawCloud(ctx, ((drift * 0.6 + 100) % (W + 40)) - 30, 12, stormy);
-      if (view.weather === 'flood') drawCloud(ctx, ((drift * 0.8 + 60) % (W + 40)) - 30, 1, true);
+      if (!view.night) {
+        if (!stormy) drawSun(ctx, 112, 9, view.season === 'hot' || view.weather === 'drought');
+        var drift = reduceMotion ? 0 : t / 260;
+        drawCloud(ctx, ((drift + 20) % (W + 40)) - 30, 4, stormy);
+        drawCloud(ctx, ((drift * 0.6 + 100) % (W + 40)) - 30, 12, stormy);
+        if (view.weather === 'flood') drawCloud(ctx, ((drift * 0.8 + 60) % (W + 40)) - 30, 1, true);
+      }
       drawMountains(ctx);
       drawGround(ctx, view.season);
       drawThatPhanom(ctx, t, view, thatAt);
-      drawRiver(ctx, t, view.season);
+      drawRiver(ctx, t, view.season, view.night);
       drawSign(ctx);
       drawPalm(ctx, t);
       view.plots.forEach(function (p, i) { drawPlot(ctx, i, p || {}, t, view); });
+      drawLife(ctx, t, view);
       drawWeather(ctx, view, t);
+      if (view.night) drawNight(ctx, t, view);
+      else drawBirds(ctx, t, view);
       drawSparkles(ctx, view, t);
     }
 

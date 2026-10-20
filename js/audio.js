@@ -105,6 +105,7 @@
     bad: function (t) { [67, 64, 60].forEach(function (m, i) { tone(sfxBus, freq(m), t + i * 0.1, 0.14, 'square', 0.3); }); },
     season: function (t) { [79, 84, 88, 91].forEach(function (m, i) { tone(sfxBus, freq(m), t + i * 0.09, 0.25, 'triangle', 0.5); }); },
     star: function (t) { tone(sfxBus, freq(96), t, 0.25, 'square', 0.3); tone(sfxBus, freq(100), t + 0.08, 0.3, 'triangle', 0.4); },
+    pop: function (t) { noise(sfxBus, t, 0.3, 0.18, 'lowpass', 1200); tone(sfxBus, 900, t, 0.25, 'triangle', 0.12, 300); },
     // temple bell: a soft strike with a long ring
     bell: function (t) { tone(sfxBus, freq(81), t, 1.6, 'sine', 0.5); tone(sfxBus, freq(93), t, 0.9, 'sine', 0.18); tone(sfxBus, freq(100), t, 0.4, 'triangle', 0.08); },
     fanfare: function (t) { [72, 76, 79, 84, 79, 84, 88].forEach(function (m, i) { tone(sfxBus, freq(m), t + i * 0.11, i === 6 ? 0.5 : 0.12, 'square', 0.35); }); },

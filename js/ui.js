@@ -170,7 +170,10 @@
       }
       return v;
     });
-    return { season: sid, weather: weather, plots: plots, selected: draft ? draft.i : null, sparkleAt: scene && scene.lastSparkle };
+    return {
+      season: sid, stage: stage, weather: weather, plots: plots, selected: draft ? draft.i : null, sparkleAt: scene && scene.lastSparkle,
+      night: sid === 'rain' && stage === 'harvest', // the rainy season ends at Ok Phansa: fire boats on the Mekong
+    };
   }
 
   function updateScene() {
@@ -623,6 +626,7 @@
       saveGame();
       sparkle();
       renderGame({ animateMoney: true, scrollTop: true });
+      if (E.seasonOf(state).season.id === 'rain') toast('คืนวันออกพรรษา มีไหลเรือไฟที่แม่น้ำโขง');
       coach('harvest');
     } else if (state.stage === 'harvest') {
       E.nextSeason(state);
@@ -671,12 +675,14 @@
     var stars = entry.stars;
     var bankrupt = state.over === 'bankrupt';
     var st = state.stats;
-    var html = '<div class="end-wrap">' +
+    var html = '<div class="end-wrap">' + (stars === 3 && !reduceMotion ? '<canvas class="end-fx" aria-hidden="true"></canvas>' : '') +
       '<div class="end-head"><span class="eyebrow">' + (bankrupt ? 'เงินทุนหมดก่อนครบ ' + MF.CONFIG.years + ' ปี' : 'ครบ ' + lengthText() + 'แล้ว') + '</span>' +
+      (bankrupt ? '' : '<div class="end-badge">' + badgeImg(stars) + '</div>') +
       '<h1>' + (bankrupt ? 'ล้มละลาย' : RANKS[stars]) + '</h1></div>' +
       '<div class="end-stars">' + [0, 1, 2].map(function (i) { return '<span class="end-star" style="--d:' + i * 0.35 + 's">' + S.img(i < stars ? 'star' : 'starOff', 6) + '</span>'; }).join('') + '</div>' +
       '<div class="end-money"><small>เงินสุดท้าย</small><b class="num big">' + fmt(state.money) + '</b><small>บาท</small></div>' +
-      '<p class="end-msg">' + esc(bankrupt ? 'เงินเหลือไม่พอซื้อเมล็ดพันธุ์ฤดูต่อไป ลองวางแผนปุ๋ยและยาให้คุ้มค่ากว่านี้ แล้วกลับมาใหม่นะ' : END_MSG[stars]) + '</p>';
+      '<div class="end-coach">' + S.img('lung', 4) + '<p><b>ลุงพันธ์</b>' +
+      esc(bankrupt ? 'เงินเหลือไม่พอซื้อเมล็ดพันธุ์ฤดูต่อไป ลองวางแผนปุ๋ยและยาให้คุ้มค่ากว่านี้ แล้วกลับมาใหม่นะ' : END_MSG[stars]) + '</p></div>';
     if (state.history.length) html += '<section class="card chart-card"><h2>เงินในมือหลังเก็บเกี่ยว</h2>' + moneyChart() + '</section>';
     html += '<section class="card stats-card"><h2>สถิติรอบนี้</h2><dl class="stats">' +
       Object.keys(MF.CROPS).filter(function (k) { return st.kg[k] > 0; }).map(function (k) {
@@ -693,6 +699,52 @@
     html += '<div class="end-actions"><button class="btn btn-primary" data-action="new-game">เล่นอีกครั้ง</button><button class="btn" data-action="go-title">หน้าหลัก</button></div>' +
       '<div class="end-credit"><span>The Magic Farmcare นำเสนอโดย</span><img src="' + $('brand-img').src + '" width="76" height="80" alt="ธนาพันธ์ ฟาร์มแคร์"></div></div>';
     $('screen-end').innerHTML = html;
+    var fx = $('screen-end').querySelector('.end-fx');
+    if (fx) fireworks(fx);
+  }
+
+  // trophy for 3 stars, silver and bronze medals for 2 and 1, a sprout for a first try
+  var MEDALS = { 2: { x: '#a9b4bd', y: '#eef3f6', k: '#5d6870' }, 1: { x: '#b06a35', y: '#e6a36d', k: '#6a3a18' } };
+  function badgeImg(stars) {
+    if (stars === 3) return S.img('trophy', 6, { k: '#8a6414' });
+    if (MEDALS[stars]) return S.img('medal', 6, MEDALS[stars]);
+    return S.img('sproutPot', 6, { k: '#55321c' });
+  }
+
+  /* pixel fireworks behind the title for a 3-star finish */
+  function fireworks(canvas) {
+    var ctx = canvas.getContext('2d'), FW = 96, FH = 72;
+    canvas.width = FW; canvas.height = FH;
+    var COLORS = ['#f2b632', '#ff8f70', '#ffffff', '#9ed8f5', '#8fe0a0', '#fbe3a0'];
+    var parts = [], start = performance.now(), last = start, nextBurst = start + 300, bursts = 0;
+    function burst() {
+      var x = 12 + Math.random() * (FW - 24), y = 8 + Math.random() * 28, c = COLORS[bursts % COLORS.length];
+      for (var i = 0; i < 32; i++) {
+        var a = (i / 32) * Math.PI * 2, v = 0.012 + Math.random() * 0.008; // pixels per ms
+        parts.push({ x: x, y: y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 1, c: i % 5 ? c : '#ffffff' });
+      }
+      bursts++;
+      if (bursts <= 4) sfx('pop');
+    }
+    function step(now) {
+      if (!canvas.isConnected) return;
+      var dt = Math.min(50, now - last);
+      last = now;
+      if (now - start < 5500 && now >= nextBurst) { burst(); nextBurst = now + 500 + Math.random() * 400; }
+      ctx.clearRect(0, 0, FW, FH);
+      parts = parts.filter(function (p) { return p.life > 0; });
+      parts.forEach(function (p) {
+        p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 0.00002 * dt; p.life -= dt / 1500;
+        ctx.fillStyle = p.c;
+        ctx.globalAlpha = Math.max(0, p.life) * 0.4; // short trail
+        ctx.fillRect(Math.round(p.x - p.vx * 60), Math.round(p.y - p.vy * 60), 1, 1);
+        ctx.globalAlpha = Math.max(0, p.life);
+        ctx.fillRect(Math.round(p.x), Math.round(p.y), 1, 1);
+      });
+      ctx.globalAlpha = 1;
+      if (now - start < 5500 || parts.length) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
   }
 
   /* ---------- input ---------- */

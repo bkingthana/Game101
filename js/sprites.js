@@ -114,7 +114,30 @@
     soundOff: ['....w....', '...ww....', 'wwwww....', 'wwwww.w.w', 'wwwww..w.', 'wwwww.w.w', 'wwwww....', '...ww....', '....w....'],
     menu: ['.........', 'wwwwwwwww', 'wwwwwwwww', '.........', 'wwwwwwwww', 'wwwwwwwww', '.........', 'wwwwwwwww', 'wwwwwwwww'],
     sparkle: ['..w..', '..w..', 'ww.ww', '..w..', '..w..'],
+
+    /* farm life in the scene */
+    egretUp: ['w...w', '.w.w.', '..wwy'],
+    egretDown: ['.....', 'wwwwy', 'w....'],
+    egretStand: ['.wy', 'w..', '.w.', 'www', '.e.', '.e.'],
+    // water buffalo facing left: grazing, and looking up (h body, H back, W horns; colors set in the scene)
+    buffaloGraze: ['.............', '....HHHHHHH..', '..WhhhhhhhhH.', 'WW.hhhhhhhhhh', '.hhhhhhhhhhh.', 'hhh.hhhhhhhh.', 'hh..h.h..h.h.', '....h.h..h.h.'],
+    buffaloUp: ['W..W.........', '.WW.HHHHHHH..', '.hhhhhhhhhhH.', 'hhhhhhhhhhhhh', 'hh.hhhhhhhhh.', '...hhhhhhhhh.', '....h.h..h.h.', '....h.h..h.h.'],
+    // Lung Phan in his straw hat, two walking frames
+    farmerA: ['.yyy.', 'yyYyy', '.nnn.', '.gGg.', 'ngggn', '.GGG.', '.C.C.', '.h.h.'],
+    farmerB: ['.yyy.', 'yyYyy', '.nnn.', '.gGg.', 'ngggn', '.GGG.', '..CC.', '..hh.'],
+
+    /* end-of-game badges: trophy (3 stars), medal (1-2 stars, metal colors set by the UI), sprout (0) */
+    trophy: ['..kkkkkkkkkk..', 'kkkywyyyyyYkkk', 'k.kywyyyyyYk.k', 'k.kywyyyyyYk.k', 'kk.kwyyyyYk.kk', '.k.kyyyyyYk.k.', '..kkkyyyYkkk..',
+      '....kkyYkk....', '.....kyYk.....', '.....kyYk.....', '....kkyYkk....', '...kyyyyyYk...', '..kgggggggGk..', '..kgLLgggLGk..', '..kkkkkkkkkk..'],
+    medal: ['.ggg....ggg.', '.gGg....gGg.', '..ggg..ggg..', '..gGg..gGg..', '...gggggg...', '....kkkk....', '..kkxxxxkk..', '.kxxwxxxxxk.',
+      '.kxwxxyxxxk.', 'kxxxxyyyxxxk', 'kxxyyyyyyyxk', 'kxxxyyyyyxxk', '.kxxyyxyyxk.', '.kxxyxxxyxk.', '..kkxxxxkk..', '....kkkk....'],
+    sproutPot: ['..ll....ll..', '.llll..llll.', '.lllgllglll.', '..llggggll..', '.....gg.....', '.....gG.....', '..kkkkkkkk..',
+      '..kbbbbbbk..', '...kbbbbk...', '...kbSSbk...', '....kkkk....'],
   };
+  // right-facing copies
+  ['buffaloGraze', 'buffaloUp'].forEach(function (n) {
+    ART[n + 'R'] = ART[n].map(function (row) { return row.split('').reverse().join(''); });
+  });
 
   var cache = {};
 
