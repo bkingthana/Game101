@@ -171,7 +171,7 @@
       if (rand(state) >= Math.min(0.85, chance)) return;
       var list = crop.events.map(function (id) {
         var e = MF.EVENTS[id], wt = 1;
-        if (e.type === 'disease' && (w === 'humid' || w === 'flood')) wt += 1.5;
+        if (e.type === 'disease' && !e.dry && (w === 'humid' || w === 'flood')) wt += 1.5;
         if (e.type !== 'weed' && excess) wt += 0.7;
         if (e.dry && w === 'drought') wt += 1;
         return [id, wt];
@@ -246,23 +246,25 @@
     // the Mekong rises over the riverside plot every rainy season, whatever the weather
     var riverLoss = clamp(crop.flood * ((info.riverRise && info.riverRise[season.id]) || 0), 0, 0.9);
 
+    var spray = p.event && p.event.choice && p.event.choice !== 'none' ? MF.PRODUCTS[p.event.choice] : null;
+    // some products (sulfur) scorch leaves when sprayed in the hot season
+    var burn = spray && spray.heatBurn && season.id === 'hot' ? spray.heatBurn : 0;
     var pest = null;
     if (p.event) {
       pest = treatmentOutcome(p.event);
-      pest.loss = clamp(pest.loss, 0, 0.95);
+      pest.loss = clamp(pest.loss + burn, 0, 0.95);
       state.stats.treated++;
       if (pest.outcome === 'correct') state.stats.correct++;
     }
 
     var jitter = 1 + (rand(state) * 2 - 1) * C.yieldJitter;
     var kg = Math.round(crop.baseYield * suit * nut.nf * (nut.excess ? 0.9 : 1) * (1 - wl) * (1 - riverLoss) * (1 - (pest ? pest.loss : 0)) * jitter);
-    var spray = p.event && p.event.choice && p.event.choice !== 'none' ? MF.PRODUCTS[p.event.choice] : null;
     var safe = !!crop.veg && (!spray || spray.group === 'bio');
     r.kg = Math.max(0, kg);
     r.price = safe ? Math.round(crop.price * (1 + C.safeVegBonus) * 10) / 10 : crop.price;
     r.safe = safe;
     r.revenue = Math.round(r.kg * r.price);
-    r.factors = { suit: suit, nf: nut.nf, limiting: nut.limiting, excess: nut.excess, weatherLoss: wl, riverLoss: riverLoss, pest: pest, eventId: p.event ? p.event.id : null, safe: safe, sprayed: !!(crop.veg && spray && !safe) };
+    r.factors = { suit: suit, nf: nut.nf, limiting: nut.limiting, excess: nut.excess, weatherLoss: wl, riverLoss: riverLoss, pest: pest, eventId: p.event ? p.event.id : null, safe: safe, sprayed: !!(crop.veg && spray && !safe), burn: burn, burnBy: burn ? spray.name : null };
 
     var grow = Math.min(1, suit * nut.nf);
     var care = p.basal && MF.FERTS[p.basal].soilCare ? 0.75 : 1;
@@ -294,9 +296,10 @@
       else if (w === 'drought') tips.push({ tone: 'bad', text: 'พืชขาดน้ำ ผลผลิตลด ' + pct(f.weatherLoss) + ' ครั้งหน้าลองสูบน้ำเข้าแปลง' });
       else tips.push({ tone: 'bad', text: 'น้ำท่วมขัง ผลผลิตลด ' + pct(f.weatherLoss) + ' ครั้งหน้าลองขุดร่องระบายน้ำ' });
     }
+    if (f.burn) tips.push({ tone: 'bad', text: 'พ่น' + f.burnBy + 'ตอนอากาศร้อนจัด ใบไหม้ เสียหายเพิ่ม ' + pct(f.burn) });
     if (f.riverLoss > 0.04) tips.push({ tone: 'bad', text: 'น้ำโขงขึ้นท่วมแปลงริมฝั่ง ผลผลิตลด ' + pct(f.riverLoss) + ' หน้าฝนแปลงนี้เหมาะกับผักบุ้งหรือข้าวที่ทนน้ำ' });
     if (f.safe) tips.push({ tone: 'good', text: 'ไม่ใช้ยาเคมี ขายเป็นผักปลอดภัย ได้ราคาเพิ่ม ' + pct(C.safeVegBonus) });
-    if (f.sprayed) tips.push({ tone: 'bad', text: 'ผักที่ฉีดยาเคมีต้องเว้นระยะก่อนเก็บเกี่ยว ขายได้ราคาปกติ ถ้าใช้เชื้อบีทีหรือไม่ใช้ยาจะได้ราคาผักปลอดภัย' });
+    if (f.sprayed) tips.push({ tone: 'bad', text: 'ผักที่ฉีดยาเคมีต้องเว้นระยะก่อนเก็บเกี่ยว ขายได้ราคาปกติ ถ้าใช้ชีวภัณฑ์ เช่น เชื้อบีที ไตรโคเดอร์มา หรือไม่ใช้ยา จะได้ราคาผักปลอดภัย' });
     if (f.nf < 0.95) {
       var k = f.limiting;
       tips.push({ tone: 'bad', text: 'ดินขาด' + MF.NUTRIENT_NAMES[k] + ' (' + k + ') ผลผลิตลด ' + pct(1 - f.nf) + ' ลองใช้ ' + MF.NUTRIENT_FIX[k] });

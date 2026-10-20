@@ -95,7 +95,7 @@
       suit: { rain: 0.4, cool: 1, hot: 0.35 },
       need: { N: 55, P: 30, K: 35 }, uptake: { N: 20, P: 8, K: 12 },
       drought: 0.4, flood: 0.8,
-      events: ['aphid', 'rootrot'],
+      events: ['aphid', 'dampingoff', 'leafspot', 'powdery', 'rootrot'],
       note: 'ผักที่คนอีสานนิยม ราคาดี ชอบอากาศเย็น ไม่ทนน้ำขังและความชื้น เสี่ยงสูง กำไรสูง',
     },
   };
@@ -130,6 +130,16 @@
     spinetoram: { name: 'สไปนีโทแรม', group: 'insect', cost: 550, distractor: false, desc: 'ยาแมลงกลุ่มใหม่ ใช้กำจัดเพลี้ยไฟ' },
     abamectin: { name: 'อะบาเมกติน', group: 'insect', cost: 350, distractor: false, desc: 'ยากำจัดแมลงและไร ใช้กำจัดเพลี้ยไฟ' },
     fipronil: { name: 'ฟิโพรนิล', group: 'insect', cost: 400, distractor: false, desc: 'ยาแมลงแบบดูดซึม ใช้กำจัดเพลี้ยไฟ' },
+    /* dill diseases, from BK's notes for Nakhon Phanom */
+    carboxin: { name: 'คาร์บ็อกซิน', group: 'fungus', cost: 450, distractor: false, desc: 'ยากันราแบบดูดซึม ใช้กับโรคเน่าคอดินในระยะกล้า' },
+    trichoderma: { name: 'เชื้อราไตรโคเดอร์มา', group: 'bio', cost: 250, distractor: false, desc: 'ชีวภัณฑ์ เชื้อราดีช่วยป้องกันเชื้อโรคในดิน ได้ผลดีที่สุดเมื่อคลุกดินตั้งแต่เตรียมแปลง' },
+    propineb: { name: 'โพรพิเนบ', group: 'fungus', cost: 300, distractor: false, desc: 'ยากันราแบบสัมผัส ฉีดเคลือบใบป้องกันโรคใบจุดก่อนฝนชุก' },
+    azoxydifeno: { name: 'อะซอกซีสโตรบิน + ไดฟีโนโคนาโซล', group: 'fungus', cost: 650, distractor: false, desc: 'ยากันราสูตรผสมแบบดูดซึม ทั้งป้องกันและรักษาโรคใบจุด' },
+    hexaconazole: { name: 'เฮกซะโคนาโซล', group: 'fungus', cost: 400, distractor: false, desc: 'ยากันราแบบดูดซึม ใช้กับโรคราแป้ง' },
+    propiconazole: { name: 'โพรพิโคนาโซล', group: 'fungus', cost: 450, distractor: false, desc: 'ยากันราแบบดูดซึม ใช้กับโรคราแป้ง' },
+    sulfur: { name: 'กำมะถันผง (ชนิดละลายน้ำ)', group: 'fungus', cost: 200, distractor: false, heatBurn: 0.15, desc: 'ใช้กับโรคราแป้ง ราคาถูก ห้ามพ่นตอนอากาศร้อนจัด ใบจะไหม้' },
+    fosetyl: { name: 'ฟอสอีทิล-อะลูมิเนียม', group: 'fungus', cost: 500, distractor: false, desc: 'ยากันราแบบดูดซึม ใช้กับโรครากเน่าโคนเน่า' },
+    etridiazole: { name: 'อีทริไดอะโซล', group: 'fungus', cost: 450, distractor: false, desc: 'ยากันราในดิน ใช้กับโรครากเน่าโคนเน่า' },
     tricyclazole: { name: 'ไตรไซคลาโซล', group: 'fungus', cost: 450, desc: 'ยากันรา ใช้เฉพาะโรคไหม้ข้าว' },
     metalaxyl: { name: 'เมทาแลกซิล', group: 'fungus', cost: 400, desc: 'ยากันรา ใช้เฉพาะโรคราน้ำค้าง' },
     mancozeb: { name: 'แมนโคเซบ', group: 'fungus', cost: 300, desc: 'ยากันราแบบป้องกัน ราคาถูก ใช้ก่อนเกิดโรค ถ้าโรคเป็นแล้วได้ผลน้อย' },
@@ -231,11 +241,29 @@
       loss: 0.4, correct: ['metalaxyl'], partial: { mancozeb: 0.4 }, harmful: {},
       tip: 'ราน้ำค้างใช้เมทาแลกซิล ส่วนแมนโคเซบใช้ป้องกันก่อนเกิดโรค',
     },
+    dampingoff: {
+      crop: 'dill', type: 'disease', sprite: 'leafRot', name: 'โรคเน่าคอดิน',
+      symptom: 'ต้นกล้ามีแผลช้ำสีน้ำตาลที่โคนต้นแล้วหักพับลง เกิดเมื่อดินชื้นมากและระบายน้ำไม่ดี',
+      loss: 0.45, correct: ['metalaxyl', 'carboxin'], partial: { trichoderma: 0.5 }, harmful: {},
+      tip: 'โรคเน่าคอดินพบในระยะกล้า ใช้เมทาแลกซิลหรือคาร์บ็อกซินพ่นหรือราดโคนต้น ป้องกันระยะยาวด้วยการคลุกเมล็ดก่อนปลูก และผสมเชื้อราไตรโคเดอร์มากับดินขี้จอกตอนเตรียมแปลง',
+    },
+    leafspot: {
+      crop: 'dill', type: 'disease', sprite: 'leafBlast', name: 'โรคใบจุด',
+      symptom: 'จุดสีน้ำตาลหรือเหลืองบนใบและก้านใบ ถ้าระบาดหนักใบไหม้แห้งตาย พบมากช่วงฝนชุกหรือน้ำค้างจัด',
+      loss: 0.4, correct: ['azoxydifeno'], partial: { propineb: 0.6, mancozeb: 0.6 }, harmful: {},
+      tip: 'โพรพิเนบหรือแมนโคเซบใช้ฉีดเคลือบใบก่อนฝนชุก ถ้าโรคเป็นแล้วใช้อะซอกซีสโตรบิน + ไดฟีโนโคนาโซล และปลูกให้โปร่งเพื่อลดความชื้น',
+    },
+    powdery: {
+      crop: 'dill', type: 'disease', sprite: 'leafRust', name: 'โรคราแป้ง', dry: true,
+      symptom: 'มีผงสีขาวคล้ายแป้งเกาะตามใบและก้าน ระบาดดีตอนอากาศเย็นและแห้ง',
+      loss: 0.35, correct: ['hexaconazole', 'propiconazole', 'sulfur'], partial: {}, harmful: {},
+      tip: 'โรคราแป้งชอบอากาศเย็นและแห้ง ใช้เฮกซะโคนาโซล โพรพิโคนาโซล หรือกำมะถันผง แต่อย่าพ่นกำมะถันตอนอากาศร้อนจัด ใบจะไหม้',
+    },
     rootrot: {
-      crop: 'dill', type: 'disease', sprite: 'leafRot', name: 'โรคโคนเน่า',
-      symptom: 'โคนต้นเน่าเป็นสีน้ำตาลฉ่ำน้ำ ต้นเหี่ยวและล้มตาย เกิดมากเมื่อดินแฉะ น้ำขัง',
-      loss: 0.45, correct: ['metalaxyl'], partial: {}, harmful: {}, notWrong: ['mancozeb'],
-      tip: 'โรคโคนเน่าเกิดจากเชื้อราในดินที่ชอบน้ำขัง ใช้เมทาแลกซิล และยกร่องให้น้ำระบายดี',
+      crop: 'dill', type: 'disease', sprite: 'leafRot', name: 'โรครากเน่าโคนเน่า',
+      symptom: 'ใบเหลืองจากใบล่างขึ้นมา โคนต้นช้ำสีน้ำตาลเข้ม รากเน่าเปื่อยหลุดง่าย เกิดในแปลงที่น้ำขังแฉะ',
+      loss: 0.45, correct: ['fosetyl', 'etridiazole', 'metalaxyl'], partial: { trichoderma: 0.5 }, harmful: {}, notWrong: ['mancozeb'],
+      tip: 'โรครากเน่าโคนเน่าเกิดในดินแฉะน้ำขัง ใช้ฟอสอีทิล-อะลูมิเนียมหรืออีทริไดอะโซล ยกร่องให้น้ำระบายดี และใช้ไตรโคเดอร์มาป้องกันเชื้อในดิน',
     },
   };
 
@@ -272,7 +300,7 @@
     harvest: ['นี่คือผลผลิตของฤดูนี้ ลุงสรุปไว้ให้ว่าอะไรทำให้ผลผลิตลดลง เอาไปปรับใช้ฤดูหน้านะครับ'],
     cool: [
       'ฤดูหนาวมาแล้ว หอมแดง คะน้า และผักชีลาวชอบอากาศเย็น ส่วนข้าวโพดก็ปลูกหลังนาได้',
-      'ผักกินใบ ถ้าไม่ใช้ยาเคมี หรือใช้เชื้อบีที จะขายเป็นผักปลอดภัย ได้ราคาเพิ่ม 15%',
+      'ผักกินใบ ถ้าไม่ใช้ยาเคมี หรือใช้ชีวภัณฑ์ เช่น เชื้อบีที ไตรโคเดอร์มา จะขายเป็นผักปลอดภัย ได้ราคาเพิ่ม 15%',
     ],
     hot: ['ฤดูร้อนเป็นฤดูสุดท้าย น้ำน้อย แดดจัด ทุกพืชได้ผลผลิตต่ำ ถ้าจะปลูก แปลงริมโขงสูบน้ำได้ถูกกว่า แปลงที่ไม่คุ้มก็ปล่อยว่างประหยัดทุนได้'],
   };
