@@ -1,6 +1,7 @@
 /* The Magic Farmcare
    Layout: one phone-width column (max 480px). Game screen = HUD, season track, pixel farm,
    step bar, scrolling panel, action bar. Sheets and the coach slide over from the bottom.
+   From 640px wide the media queries at the end rearrange this for foldables, tablets and laptops.
    One committed look (a dusk paddy field with young-rice paper cards), so no dark/light variants. */
 :root {
   --frame: #12241b;      /* paddy at dusk, behind everything */
@@ -559,6 +560,171 @@ a.btn { display: grid; place-items: center; text-align: center; text-decoration:
 .contact-card p { margin-bottom: 10px; }
 .contact-links { display: grid; gap: 10px; }
 .end-credit { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-top: 6px; font-size: 12px; color: var(--on-frame-soft); }
+
+/* ---------- wide screens (640px and up: foldables, tablets, laptops) ----------
+   Everything above is the phone layout and stays as it is below 640px.
+   Wide portrait: scene left, step bar and action bar in a side column, panel full width below in 2 columns.
+   Wide landscape (aspect 4/3 and wider): HUD, scene, step bar and action bar on the left, panel on the right.
+   The game chrome around the scene is about 206px tall (HUD 60, season track 15, step bar 45, action bar 86),
+   which the height limits on the scene below are based on. */
+
+@media (min-width: 640px) {
+  :root {
+    --gutter-l: max(20px, env(safe-area-inset-left, 0px));
+    --gutter-r: max(20px, env(safe-area-inset-right, 0px));
+    --safe-y: calc(env(safe-area-inset-top, 0px) + env(safe-area-inset-bottom, 0px));
+  }
+  #app { max-width: 1100px; }
+
+  /* title and end: one centered column */
+  .title-screen { padding-inline: max(0px, calc((100% - 640px) / 2)); }
+  .title-scene { width: min(100%, max(360px, calc((100vh - var(--safe-y) - 600px) * 1.6))); width: min(100%, max(360px, calc((100dvh - var(--safe-y) - 600px) * 1.6))); margin-inline: auto; }
+  .title-actions { width: min(100%, 440px); margin-inline: auto; }
+  .end-wrap { max-width: 720px; margin-inline: auto; padding-block: 32px 36px; }
+
+  /* game: scene on the left, steps and the action bar beside it, panel below */
+  /* the scene column is 2/3 of the width, but no wider than a scene that still leaves the panel about 300px of height */
+  .game-screen {
+    display: grid;
+    grid-template-columns: min(calc((100% - 16px) * 2 / 3), calc(100% - 216px), calc((100vh - var(--safe-y) - 400px) * 1.6)) minmax(200px, 1fr);
+    grid-template-columns: min(calc((100% - 16px) * 2 / 3), calc(100% - 216px), calc((100dvh - var(--safe-y) - 400px) * 1.6)) minmax(200px, 1fr);
+    grid-template-rows: auto auto auto auto minmax(0, 1fr);
+    grid-template-areas:
+      "hud   hud"
+      "track track"
+      "scene stage"
+      "scene action"
+      "panel panel";
+    column-gap: 16px;
+  }
+  .hud { grid-area: hud; }
+  .season-track { grid-area: track; }
+  .scene-wrap { grid-area: scene; align-self: start; min-width: 0; }
+  .stagebar { grid-area: stage; align-self: start; grid-template-columns: minmax(0, 1fr); gap: 6px; margin: 0; }
+  .stagebar li { justify-content: flex-start; gap: 10px; padding: 8px 10px; font-size: 15px; background: var(--frame-2); border-bottom: 0; border-left: 4px solid var(--frame-3); }
+  .stagebar li span { width: 24px; height: 24px; font-size: 18px; }
+  .stagebar li.now { border-left-color: var(--gold); }
+  .actionbar { grid-area: action; align-self: end; grid-template-columns: minmax(0, 1fr); gap: 10px; padding-block: 12px 0; }
+  .actionbar .btn { width: 100%; min-width: 0; }
+  .panel { grid-area: panel; margin-top: 14px; border-top: 3px solid var(--frame-3); }
+
+  /* sheets and the coach */
+  .sheet { width: min(100%, 720px); }
+  .coach { width: min(100%, 640px); }
+  .fert-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .menu-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .menu-list > :first-child { grid-column: 1 / -1; }
+  .howto { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 18px; }
+}
+
+/* the sheet is wide enough for all 6 crops in one row */
+@media (min-width: 700px) {
+  .choice-grid.crops { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+}
+
+/* wide portrait: the panel is full width, so its content goes in 2 columns */
+@media (min-width: 640px) and (max-aspect-ratio: 1333/1000) {
+  .panel { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: start; gap: 14px 16px; }
+  .panel > * { grid-column: 1 / -1; }
+  .panel > .event-card { grid-column: auto; }
+  .panel > .event-card:last-of-type:nth-of-type(odd) { grid-column: 1 / -1; }
+  .panel > .event-card:last-of-type:nth-of-type(odd) .options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+  .plot-list { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; }
+  .plot-list li { display: grid; }
+
+  .top-card { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 24px; }
+  .top-row:nth-last-child(2):nth-child(odd) { border-bottom: 0; }
+
+  .receipt { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .receipt-head, .r-sum { grid-column: 1 / -1; }
+  .r-plot:nth-child(even) { border-right: 2px dashed #cfd6bb; }
+}
+
+/* a half-width plot row is too narrow for name, soil and pick side by side: the pick goes under the name */
+@media (min-width: 640px) and (max-width: 779.98px) and (max-aspect-ratio: 1333/1000) {
+  .plot-row { grid-template-columns: auto minmax(0, 1fr); align-items: start; }
+  .plot-pick { grid-column: 2; justify-content: flex-start; max-width: none; }
+}
+
+/* wide landscape: panel on the right at full height, the rest stacked on the left */
+@media (min-width: 640px) and (min-aspect-ratio: 4/3) {
+  #app { max-width: 1440px; }
+  .game-screen {
+    grid-template-columns: minmax(min(340px, 52%), calc((100vh - var(--safe-y) - 216px) * 1.6)) minmax(min(400px, 44%), 1fr);
+    grid-template-columns: minmax(min(340px, 52%), calc((100dvh - var(--safe-y) - 216px) * 1.6)) minmax(min(400px, 44%), 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr) minmax(0, auto) auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "hud    panel"
+      "track  panel"
+      ".      panel"
+      "scene  panel"
+      "stage  panel"
+      ".      panel"
+      "action panel";
+    column-gap: 24px;
+  }
+  #scene { width: min(100%, calc((100vh - var(--safe-y) - 216px) * 1.6)); width: min(100%, calc((100dvh - var(--safe-y) - 216px) * 1.6)); margin-inline: auto; }
+  .stagebar { align-self: auto; grid-template-columns: repeat(3, 1fr); gap: 4px; margin: 10px 0 0; }
+  .stagebar li { justify-content: center; gap: 6px; padding: 6px 2px; font-size: 13px; background: none; border-left: 0; border-bottom: 3px solid var(--frame-3); }
+  .stagebar li span { width: 20px; height: 20px; font-size: 16px; }
+  .stagebar li.now { border-bottom-color: var(--gold); }
+  .actionbar { align-self: auto; grid-template-columns: 1fr auto; gap: 12px; padding-block: 10px 12px; }
+  .actionbar .btn { width: auto; min-width: 148px; }
+  .panel { margin-top: 0; border-top: 0; padding-block: 12px 18px; }
+
+  /* title: farm on the left, name and buttons on the right; the empty first and last rows center it */
+  .title-screen {
+    display: grid;
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+    grid-template-rows: 1fr repeat(6, auto) 1fr;
+    grid-template-areas: "scene ." "scene brand" "scene title" "scene tag" "scene actions" "scene best" "scene credit" "scene .";
+    column-gap: 32px;
+    row-gap: 14px;
+    padding-inline: max(0px, calc((100% - 1100px) / 2));
+  }
+  .brand { grid-area: brand; }
+  .title-scene { grid-area: scene; align-self: center; width: 100%; }
+  .game-title { grid-area: title; }
+  .gt-big { font-size: clamp(48px, 7.8vw, 76px); } /* "Farmcare" is about 4.9em wide and must fit the right column */
+  .tagline { grid-area: tag; }
+  .title-actions { grid-area: actions; }
+  .best-line { grid-area: best; }
+  .title-credit { grid-area: credit; }
+}
+
+/* phones held sideways: a smaller logo so the title buttons start above the fold */
+@media (min-width: 640px) and (min-aspect-ratio: 4/3) and (max-height: 500px) {
+  .title-screen { padding-block: 12px 16px; row-gap: 10px; }
+  .brand-img { width: 60px; }
+}
+
+/* tall wide screens (big tablets in portrait): a little larger text */
+@media (min-width: 800px) and (min-height: 1100px) and (max-aspect-ratio: 1333/1000) {
+  body { font-size: 16px; }
+  .gt-big { font-size: 92px; }
+  .gt-small { font-size: 30px; }
+  .tagline { font-size: 18px; }
+  .hud-money .num { font-size: 32px; }
+  .hud-season b { font-size: 20px; }
+  .stagebar li { font-size: 16px; padding-block: 10px; }
+  .section-title { font-size: 18px; }
+  .section-title small { font-size: 14px; }
+  .card h3 { font-size: 20px; }
+  .card p { font-size: 15px; }
+  .plot-name { font-size: 16px; }
+  .plot-name small, .plot-last, .pick-text small { font-size: 13px; }
+  .pick-text b { font-size: 14px; }
+  .opt-text b, .fert-text b { font-size: 16px; }
+  .opt-text small, .fert-text small { font-size: 13px; }
+  .tips li { font-size: 14px; }
+  .r-sum div { font-size: 15px; }
+  .action-info { font-size: 13px; }
+  .action-info b { font-size: 34px; }
+  .actionbar .btn { min-height: 56px; font-size: 19px; }
+  .btn { font-size: 17px; }
+  .coach-text { font-size: 16px; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
