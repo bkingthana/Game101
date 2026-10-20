@@ -101,9 +101,13 @@
     emamectin: { name: 'อีมาเมกตินเบนโซเอต', group: 'insect', cost: 500, desc: 'ยากำจัดหนอนผีเสื้อ เช่น หนอนกระทู้' },
     bt: { name: 'เชื้อบีที (Bt)', group: 'bio', cost: 300, desc: 'ชีวภัณฑ์กำจัดหนอน ปลอดภัยต่อคนและแมลงที่มีประโยชน์' },
     cypermethrin: { name: 'ไซเปอร์เมทริน', group: 'insect', cost: 250, desc: 'ยาฆ่าแมลงแบบสัมผัส ออกฤทธิ์กว้าง ฆ่าแมลงดีไปด้วย' },
+    spinetoram: { name: 'สไปนีโทแรม', group: 'insect', cost: 550, distractor: false, desc: 'ยาแมลงกลุ่มใหม่ ใช้กำจัดเพลี้ยไฟ' },
+    abamectin: { name: 'อะบาเมกติน', group: 'insect', cost: 350, distractor: false, desc: 'ยากำจัดแมลงและไร ใช้กำจัดเพลี้ยไฟ' },
+    fipronil: { name: 'ฟิโพรนิล', group: 'insect', cost: 400, distractor: false, desc: 'ยาแมลงแบบดูดซึม ใช้กำจัดเพลี้ยไฟ' },
     tricyclazole: { name: 'ไตรไซคลาโซล', group: 'fungus', cost: 450, desc: 'ยากันรา ใช้เฉพาะโรคไหม้ข้าว' },
     metalaxyl: { name: 'เมทาแลกซิล', group: 'fungus', cost: 400, desc: 'ยากันรา ใช้เฉพาะโรคราน้ำค้าง' },
-    mancozeb: { name: 'แมนโคเซบ', group: 'fungus', cost: 300, desc: 'ยากันราแบบป้องกัน ใช้กับโรคใบจุดได้หลายชนิด' },
+    mancozeb: { name: 'แมนโคเซบ', group: 'fungus', cost: 300, desc: 'ยากันราแบบป้องกัน ราคาถูก ใช้ก่อนเกิดโรค ถ้าโรคเป็นแล้วได้ผลน้อย' },
+    difenoconazole: { name: 'ไดฟีโนโคนาโซล', group: 'fungus', cost: 550, distractor: false, desc: 'ยากันราแบบดูดซึม ทั้งป้องกันและรักษาโรคใบจุด ราคาสูงกว่ายาพื้นฐาน' },
     bispyribac: { name: 'บิสไพริแบค-โซเดียม', group: 'weed', cost: 400, desc: 'ยาฆ่าหญ้าในนาข้าว ไม่ทำลายต้นข้าว' },
     atrazine: { name: 'อะทราซีน', group: 'weed', cost: 350, desc: 'ยาคุมวัชพืชในไร่ข้าวโพด' },
     glyphosate: { name: 'ไกลโฟเซต', group: 'weed', cost: 300, desc: 'ยาฆ่าหญ้าแบบไม่เลือกทำลาย ใช้ก่อนปลูกเท่านั้น' },
@@ -112,7 +116,9 @@
   MF.EVENT_TYPES = { insect: 'แมลงศัตรูพืช', disease: 'โรคพืช', weed: 'วัชพืช' };
 
   /* loss = share of yield lost if nothing is done.
-     correct: products that work (90%). partial: {id: effectiveness}. harmful: {id: extra crop loss}. */
+     correct: products that work (90%). partial: {id: effectiveness}. harmful: {id: extra crop loss}.
+     A product with distractor: false is only offered where an event lists it, never as a random wrong
+     answer, because it may genuinely work on pests this table does not model it for. */
   MF.EVENTS = {
     bph: {
       crop: 'rice', type: 'insect', sprite: 'bug', name: 'เพลี้ยกระโดดสีน้ำตาล',
@@ -153,8 +159,8 @@
     thrips: {
       crop: 'shallot', type: 'insect', sprite: 'thrips', name: 'เพลี้ยไฟหอม', dry: true,
       symptom: 'ใบหอมเป็นรอยขีดสีขาวเงิน ปลายใบแห้ง ใบบิดงอ ระบาดหนักช่วงอากาศแห้ง',
-      loss: 0.4, correct: ['imidacloprid'], partial: { cypermethrin: 0.3 }, harmful: {},
-      tip: 'เพลี้ยไฟเป็นแมลงปากดูด ใช้ยาดูดซึมอย่างอิมิดาโคลพริด และสลับกลุ่มยาเพื่อไม่ให้ดื้อยา',
+      loss: 0.4, correct: ['imidacloprid', 'spinetoram', 'abamectin', 'fipronil'], partial: { cypermethrin: 0.3 }, harmful: {},
+      tip: 'เพลี้ยไฟเป็นแมลงปากดูด ใช้ได้หลายตัว เช่น อิมิดาโคลพริด สไปนีโทแรม อะบาเมกติน ฟิโพรนิล และควรสลับกลุ่มยาเพื่อไม่ให้ดื้อยา',
     },
     beetarmy: {
       crop: 'shallot', type: 'insect', sprite: 'worm', name: 'หนอนกระทู้หอม',
@@ -165,8 +171,8 @@
     purple: {
       crop: 'shallot', type: 'disease', sprite: 'leafPurple', name: 'โรคใบจุดสีม่วง',
       symptom: 'แผลรูปไข่สีม่วงมีขอบเหลืองบนใบหอม ใบหักพับ ระบาดเมื่อมีหมอกหรือน้ำค้าง',
-      loss: 0.4, correct: ['mancozeb'], partial: {}, harmful: {},
-      tip: 'โรคใบจุดสีม่วงเกิดจากเชื้อรา ใช้แมนโคเซบฉีดพ่นป้องกัน',
+      loss: 0.4, correct: ['difenoconazole'], partial: { mancozeb: 0.4 }, harmful: {},
+      tip: 'โรคใบจุดสีม่วงเกิดจากเชื้อรา แมนโคเซบใช้ป้องกันก่อนเกิดโรค ถ้าเป็นแล้วต้องใช้ไดฟีโนโคนาโซลที่ทั้งป้องกันและรักษาได้ แม้ราคาจะสูงกว่า',
     },
   };
 

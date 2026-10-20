@@ -134,11 +134,16 @@
     p.basal = isCrop(use) ? basal || null : null;
   }
 
+  /* Four products to choose from: up to two that work, every partial or harmful one, and at least
+     one plain wrong answer, so an event with many cures still needs thought. */
   function eventOptions(state, id) {
     var e = MF.EVENTS[id];
-    var opts = e.correct.concat(Object.keys(e.partial), Object.keys(e.harmful));
+    var listed = e.correct.concat(Object.keys(e.partial), Object.keys(e.harmful));
+    var opts = shuffle(state, e.correct).slice(0, 2).concat(Object.keys(e.partial), Object.keys(e.harmful));
     var sameGroup = { insect: ['insect', 'bio'], disease: ['fungus'], weed: ['weed'] }[e.type];
-    var rest = Object.keys(MF.PRODUCTS).filter(function (k) { return opts.indexOf(k) < 0; });
+    var rest = Object.keys(MF.PRODUCTS).filter(function (k) {
+      return listed.indexOf(k) < 0 && MF.PRODUCTS[k].distractor !== false;
+    });
     var near = shuffle(state, rest.filter(function (k) { return sameGroup.indexOf(MF.PRODUCTS[k].group) >= 0; }));
     var far = shuffle(state, rest.filter(function (k) { return sameGroup.indexOf(MF.PRODUCTS[k].group) < 0; }));
     var pool = near.concat(far);
@@ -341,6 +346,7 @@
     available: available,
     nutrientFactor: nutrientFactor,
     planCost: planCost,
+    eventOptions: eventOptions,
     setPlan: setPlan,
     startGrowing: startGrowing,
     weatherResponse: weatherResponse,
