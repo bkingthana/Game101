@@ -725,9 +725,17 @@
     };
     var info = shareInfo;
     if (!MF.share) return;
+    // the crop this player harvested most goes on the card
+    var st = state.stats;
+    var crops = Object.keys(MF.CROPS).filter(function (k) { return st.kg[k] > 0; }).sort(function (a, b) { return st.kg[b] - st.kg[a]; });
+    var top = crops[0] || 'rice';
     MF.share.resultCard({
-      rank: bankrupt ? 'ล้มละลาย' : RANKS[stars], stars: stars, money: entry.money, bankrupt: bankrupt,
-      badge: bankrupt ? null : badgeSprite(stars),
+      tier: bankrupt ? 'bankrupt' : stars, rank: bankrupt ? 'ล้มละลาย' : RANKS[stars], stars: stars, money: entry.money,
+      profit: entry.money - MF.CONFIG.startMoney,
+      totalKg: crops.reduce(function (sum, k) { return sum + st.kg[k]; }, 0),
+      correct: st.correct, treated: st.treated,
+      icon: bankrupt ? { name: 'wilt' } : stars === 3 ? badgeSprite(3) : stars === 0 ? badgeSprite(0) : { name: top + '2' },
+      cropIcon: { name: top + '2' },
     }).then(MF.share.toBlob).then(function (b) { info.blob = b; }).catch(function () {});
   }
 

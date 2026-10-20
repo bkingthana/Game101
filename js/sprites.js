@@ -131,6 +131,8 @@
       '....kkyYkk....', '.....kyYk.....', '.....kyYk.....', '....kkyYkk....', '...kyyyyyYk...', '..kgggggggGk..', '..kgLLgggLGk..', '..kkkkkkkkkk..'],
     medal: ['.ggg....ggg.', '.gGg....gGg.', '..ggg..ggg..', '..gGg..gGg..', '...gggggg...', '....kkkk....', '..kkxxxxkk..', '.kxxwxxxxxk.',
       '.kxwxxyxxxk.', 'kxxxxyyyxxxk', 'kxxyyyyyyyxk', 'kxxxyyyyyxxk', '.kxxyyxyyxk.', '.kxxyxxxyxk.', '..kkxxxxkk..', '....kkkk....'],
+    // a wilted plant in dry soil, for a year that ran out of money
+    wilt: ['..........', '...YY.....', '..Y..Y....', '.Y....b...', '......b...', '.....b.YY.', '....b...Y.', '....b....Y', '....b.....', '...SSSS...', '..SBSSBS..', '.SSSBSSSS.'],
     sproutPot: ['..ll....ll..', '.llll..llll.', '.lllgllglll.', '..llggggll..', '.....gg.....', '.....gG.....', '..kkkkkkkk..',
       '..kbbbbbbk..', '...kbbbbk...', '...kbSSbk...', '....kkkk....'],
   };

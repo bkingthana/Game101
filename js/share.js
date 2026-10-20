@@ -116,7 +116,8 @@
   }
 
   // "โทร … | LINE … | FB: …" with a line icon before each, centered or left-aligned at x
-  function contactLine(ctx, x, y, size, align) {
+  function contactLine(ctx, x, y, size, align, color) {
+    var ink = color || C.charcoal;
     var font = '400 ' + size + 'px ' + KANIT, icon = Math.round(size * 0.9), gap = Math.round(size * 0.3), sep = '   |   ';
     ctx.font = font;
     var parts = CONTACT.map(function (c) { return { icon: c[0], label: c[1], w: icon + gap + ctx.measureText(c[1]).width }; });
@@ -127,13 +128,13 @@
       ctx.save();
       ctx.translate(cx, y - icon * 0.82);
       ctx.scale(icon / 24, icon / 24);
-      ctx.strokeStyle = C.charcoal;
+      ctx.strokeStyle = ink;
       ctx.lineWidth = 2;
       ctx.lineJoin = 'round';
       ctx.lineCap = 'round';
       ctx.stroke(new Path2D(ICONS[p.icon]));
       ctx.restore();
-      text(ctx, p.label, cx + icon + gap, y, font, C.charcoal, 'left');
+      text(ctx, p.label, cx + icon + gap, y, font, ink, 'left');
       cx += p.w;
       if (i < parts.length - 1) { text(ctx, sep, cx, y, font, C.muted, 'left'); cx += sepW; }
     });
@@ -141,45 +142,269 @@
 
   function host() { return MF.CONFIG.shareUrl.replace(/^https?:\/\//, '').replace(/\/$/, ''); }
 
-  /* Result card, 1080 x 1350 (4:5 for LINE and Facebook feeds).
-     r: { rank, stars, money, bankrupt, badge: { name, over } } */
+  /* ---------- rank card ----------
+     Each rank gets its own look, like a collectible card: the higher the rank, the richer the metal,
+     the bigger the burst of light, and the more trimmings (laurel, crown, sparkles). Colors come from
+     the CI palette; the gold card sits on the CI's dark background. */
+  var METAL = {
+    gold: ['#FFF1BF', '#D9B44A', '#9C7420'],
+    silver: ['#FFFFFF', '#BAC4CC', '#77838C'],
+    bronze: ['#F6CFA6', '#B97A45', '#6F4321'],
+    green: ['#E2F1B8', '#9BC53D', '#5E8A1F'],
+    gray: ['#EDEDED', '#A6A6A6', '#6A6A6A'],
+  };
+  var TIERS = {
+    3: { metal: 'gold', bg: ['#3A3A3A', '#232323'], ink: '#FFFFFF', soft: '#D9D9D9', ray: '#D9B44A', rays: 0.22, leaf: '#D9B44A', laurel: true, crown: true, sparkles: 10, label: 'ระดับตำนาน', dark: true },
+    2: { metal: 'silver', bg: ['#F4FAFD', '#DCEFF8'], ink: C.charcoal, soft: '#5F6B73', ray: '#9AD4EC', rays: 0.45, leaf: '#5E8A1F', laurel: true, sparkles: 5, label: 'ระดับมืออาชีพ' },
+    1: { metal: 'bronze', bg: ['#FFFAEE', '#F6E6C6'], ink: C.charcoal, soft: '#7A6A55', ray: '#D9B44A', rays: 0.3, leaf: '#AA7F4C', laurel: false, sparkles: 2, label: 'ระดับเริ่มเก่ง' },
+    0: { metal: 'green', bg: ['#F7FBEF', '#E4F1CC'], ink: C.charcoal, soft: '#5E6B4E', ray: '#9BC53D', rays: 0.25, leaf: '#9BC53D', laurel: false, sparkles: 0, label: 'ระดับเริ่มต้น' },
+    bankrupt: { metal: 'gray', bg: ['#F5F5F5', '#E2E2E2'], ink: C.charcoal, soft: '#6E6E6E', ray: '#BDBDBD', rays: 0.2, leaf: '#9E9E9E', laurel: false, sparkles: 0, label: 'ปีหน้าเอาใหม่' },
+  };
+
+  function metalGradient(ctx, x0, y0, x1, y1, m) {
+    var g = ctx.createLinearGradient(x0, y0, x1, y1), c = METAL[m];
+    g.addColorStop(0, c[0]); g.addColorStop(0.45, c[1]); g.addColorStop(1, c[2]);
+    return g;
+  }
+
+  function shieldPath(ctx, cx, top, w, h) {
+    var x = cx - w / 2, r = w * 0.16;
+    ctx.beginPath();
+    ctx.moveTo(x + r, top);
+    ctx.lineTo(x + w - r, top);
+    ctx.quadraticCurveTo(x + w, top, x + w, top + r);
+    ctx.lineTo(x + w, top + h * 0.5);
+    ctx.bezierCurveTo(x + w, top + h * 0.78, cx + w * 0.18, top + h * 0.9, cx, top + h);
+    ctx.bezierCurveTo(cx - w * 0.18, top + h * 0.9, x, top + h * 0.78, x, top + h * 0.5);
+    ctx.lineTo(x, top + r);
+    ctx.quadraticCurveTo(x, top, x + r, top);
+    ctx.closePath();
+  }
+
+  function sunburst(ctx, cx, cy, t, W, H) {
+    var glow = ctx.createRadialGradient(cx, cy, 20, cx, cy, 460);
+    glow.addColorStop(0, t.dark ? 'rgba(217,180,74,0.45)' : 'rgba(255,255,255,0.9)');
+    glow.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, W, H);
+    ctx.save();
+    ctx.globalAlpha = t.rays;
+    ctx.fillStyle = t.ray;
+    for (var i = 0; i < 18; i++) {
+      var a = (i / 18) * Math.PI * 2 - Math.PI / 2, s = Math.PI / 36;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx + Math.cos(a - s) * 900, cy + Math.sin(a - s) * 900);
+      ctx.lineTo(cx + Math.cos(a + s) * 900, cy + Math.sin(a + s) * 900);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // a pointed leaf from (x, y) pointing along angle a
+  function leaf(ctx, x, y, a, len, wid) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(a);
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.quadraticCurveTo(len * 0.5, -wid, len, 0);
+    ctx.quadraticCurveTo(len * 0.5, wid, 0, 0);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // two laurel branches rising from below the emblem, with paired leaves along each stem
+  function laurel(ctx, cx, cy, radius, color) {
+    ctx.fillStyle = color;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 6;
+    ctx.lineCap = 'round';
+    [1, -1].forEach(function (side) {
+      var at = function (u) { return Math.PI / 2 + side * (0.4 + 2.15 * u); };
+      ctx.beginPath();
+      for (var j = 0; j <= 24; j++) {
+        var b = at(j / 24), px = cx + Math.cos(b) * radius, py = cy + Math.sin(b) * radius;
+        if (j) ctx.lineTo(px, py); else ctx.moveTo(px, py);
+      }
+      ctx.stroke();
+      for (var i = 0; i < 8; i++) {
+        var u = (i + 0.6) / 8.6, a = at(u), x = cx + Math.cos(a) * radius, y = cy + Math.sin(a) * radius;
+        var along = Math.atan2(side * Math.cos(a), -side * Math.sin(a)); // the way the stem grows
+        var len = 46 - i * 2.5, wid = 15 - i * 0.8;
+        leaf(ctx, x, y, along - 0.75, len, wid);
+        leaf(ctx, x, y, along + 0.75, len * 0.85, wid * 0.85);
+      }
+      leaf(ctx, cx + Math.cos(at(1)) * radius, cy + Math.sin(at(1)) * radius, Math.atan2(side * Math.cos(at(1)), -side * Math.sin(at(1))), 34, 12);
+    });
+  }
+
+  // sparkle spots around the emblem, kept clear of the ribbon and the stars
+  var SPARKLES = [[-250, -190], [235, -230], [-335, -40], [312, -112], [-180, -300], [95, -282], [-345, 58], [338, 40], [-62, -338], [272, -8]];
+
+  function crown(ctx, cx, bottom, w, m) {
+    var h = w * 0.5, x = cx - w / 2;
+    ctx.beginPath();
+    ctx.moveTo(x, bottom);
+    ctx.lineTo(x, bottom - h * 0.55);
+    ctx.lineTo(x + w * 0.25, bottom - h * 0.25);
+    ctx.lineTo(cx, bottom - h);
+    ctx.lineTo(x + w * 0.75, bottom - h * 0.25);
+    ctx.lineTo(x + w, bottom - h * 0.55);
+    ctx.lineTo(x + w, bottom);
+    ctx.closePath();
+    ctx.fillStyle = metalGradient(ctx, x, bottom - h, x + w, bottom, m);
+    ctx.fill();
+    ctx.lineWidth = 4; ctx.strokeStyle = METAL[m][2]; ctx.stroke();
+    [[x, bottom - h * 0.55], [cx, bottom - h], [x + w, bottom - h * 0.55]].forEach(function (p) {
+      ctx.beginPath(); ctx.arc(p[0], p[1], 9, 0, Math.PI * 2); ctx.fillStyle = '#FFFFFF'; ctx.fill();
+      ctx.lineWidth = 3; ctx.strokeStyle = METAL[m][2]; ctx.stroke();
+    });
+  }
+
+  function sparkle(ctx, x, y, s, color) {
+    ctx.beginPath();
+    ctx.moveTo(x, y - s);
+    ctx.quadraticCurveTo(x, y, x + s, y);
+    ctx.quadraticCurveTo(x, y, x, y + s);
+    ctx.quadraticCurveTo(x, y, x - s, y);
+    ctx.quadraticCurveTo(x, y, x, y - s);
+    ctx.fillStyle = color;
+    ctx.fill();
+  }
+
+  // the rank name on a ribbon across the bottom of the emblem
+  function ribbon(ctx, cx, y, w, h, t, label) {
+    var dark = METAL[t.metal][2];
+    [-1, 1].forEach(function (side) {
+      var ex = cx + side * (w / 2 + 50), ix = cx + side * (w / 2 - 20);
+      ctx.beginPath();
+      ctx.moveTo(ix, y + 18);
+      ctx.lineTo(ex, y + 18);
+      ctx.lineTo(ex - side * 30, y + 18 + h / 2);
+      ctx.lineTo(ex, y + 18 + h);
+      ctx.lineTo(ix, y + 18 + h);
+      ctx.closePath();
+      ctx.fillStyle = dark;
+      ctx.fill();
+    });
+    // light metals carry charcoal lettering, darker ones white (bold and large, as the CI allows)
+    var c = METAL[t.metal], light = t.metal === 'gold' || t.metal === 'silver' || t.metal === 'gray';
+    var g = ctx.createLinearGradient(0, y, 0, y + h);
+    g.addColorStop(0, light ? c[0] : c[1]); g.addColorStop(1, light ? c[1] : c[2]);
+    roundRect(ctx, cx - w / 2, y, w, h, 12);
+    ctx.fillStyle = g;
+    ctx.fill();
+    ctx.lineWidth = 4; ctx.strokeStyle = dark; ctx.stroke();
+    text(ctx, label, cx, y + h * 0.68, '700 52px ' + KANIT, light ? '#2F2F2F' : '#FFFFFF');
+  }
+
+  function emblem(ctx, cx, cy, r, t) {
+    var w = 300, h = 340, top = cy - h / 2 - 20;
+    if (t.laurel) laurel(ctx, cx, cy - 10, 215, t.leaf);
+    // drop shadow, metal rim, darker inner field
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,0.25)'; ctx.shadowBlur = 24; ctx.shadowOffsetY = 10;
+    shieldPath(ctx, cx, top, w, h);
+    ctx.fillStyle = metalGradient(ctx, cx - w / 2, top, cx + w / 2, top + h, t.metal);
+    ctx.fill();
+    ctx.restore();
+    shieldPath(ctx, cx, top + 20, w - 40, h - 46);
+    ctx.fillStyle = METAL[t.metal][2];
+    ctx.fill();
+    shieldPath(ctx, cx, top + 28, w - 56, h - 62);
+    var inner = ctx.createLinearGradient(0, top, 0, top + h);
+    inner.addColorStop(0, t.dark ? '#4A4A4A' : '#FFFFFF');
+    inner.addColorStop(1, t.dark ? '#2B2B2B' : C.skyTint);
+    ctx.fillStyle = inner;
+    ctx.fill();
+    // the icon: a trophy for the top rank, otherwise the crop the player grew most
+    var icon = r.icon, c = S.canvas(icon.name, icon.over), scale = Math.floor(Math.min(190 / c.width, 200 / c.height));
+    sprite(ctx, icon.name, cx - (c.width * scale) / 2, top + 40 + (220 - c.height * scale) / 2, scale, icon.over);
+    if (t.crown) crown(ctx, cx, top + 6, 150, t.metal);
+  }
+
+  function statTile(ctx, x, y, w, h, t, icon, value, label) {
+    roundRect(ctx, x, y, w, h, 16);
+    ctx.fillStyle = t.dark ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.75)';
+    ctx.fill();
+    ctx.lineWidth = 2; ctx.strokeStyle = t.dark ? 'rgba(217,180,74,0.5)' : C.border; ctx.stroke();
+    if (icon) {
+      var c = S.canvas(icon.name, icon.over), s = Math.floor(52 / c.height);
+      sprite(ctx, icon.name, x + 22, y + (h - c.height * s) / 2, s, icon.over);
+    }
+    var tx = x + (icon ? 80 : 24);
+    text(ctx, value, tx, y + 54, '600 34px ' + KANIT, t.ink, 'left');
+    text(ctx, label, tx, y + 88, '300 22px ' + KANIT, t.soft, 'left');
+  }
+
+  /* Rank card, 1080 x 1350 (4:5 for LINE and Facebook feeds).
+     r: { tier (0-3 or 'bankrupt'), rank, stars, money, profit, totalKg, correct, treated, icon, cropIcon } */
   function resultCard(r) {
     return fontsReady().then(function () {
-      var W = 1080, H = 1350, k = makeCanvas(W, H), ctx = k.ctx;
-      ctx.fillStyle = C.skyTint;
-      ctx.fillRect(0, 0, W, 360);
+      var W = 1080, H = 1350, k = makeCanvas(W, H), ctx = k.ctx, t = TIERS[r.tier];
+      var bg = ctx.createLinearGradient(0, 0, 0, H);
+      bg.addColorStop(0, t.bg[0]); bg.addColorStop(1, t.bg[1]);
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, W, H);
 
-      var lh = logo(ctx, 72, 56, 150);
-      text(ctx, 'p r e s e n t s', 72 + 75, 56 + lh + 40, '300 22px ' + KANIT, C.muted);
-      gameTitle(ctx, 640, 150, 128);
-      text(ctx, 'เกมปลูก ดูแล เก็บเกี่ยว ริมแม่น้ำโขง', 640, 318, '400 30px ' + KANIT, C.charcoal);
+      var cx = W / 2, cy = 470;
+      sunburst(ctx, cx, cy, t, W, H);
 
-      scene(ctx, 140, 392, 5);
-
-      // the result on a gold-tint box
-      var py = 924, ph = 214;
-      roundRect(ctx, 90, py, W - 180, ph, 16);
-      ctx.fillStyle = C.goldTint;
-      ctx.fill();
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = C.gold;
+      // the logo's fields along the bottom, inside a metal border like a trading card
+      ctx.save();
+      roundRect(ctx, 26, 26, W - 52, H - 52, 34);
+      ctx.clip();
+      fieldCurve(ctx, W, H - 26, 40);
+      ctx.restore();
+      roundRect(ctx, 26, 26, W - 52, H - 52, 34);
+      ctx.lineWidth = 10;
+      ctx.strokeStyle = metalGradient(ctx, 0, 0, W, H, t.metal);
       ctx.stroke();
-      if (r.badge) {
-        var b = S.canvas(r.badge.name, r.badge.over), bs = 8;
-        sprite(ctx, r.badge.name, 130 + (120 - b.width * bs) / 2, py + (ph - b.height * bs) / 2, bs, r.badge.over);
-      }
-      var tx = r.badge ? 280 : 130;
-      text(ctx, r.rank, tx, py + 82, '600 46px ' + KANIT, C.charcoal, 'left');
-      if (!r.bankrupt) for (var i = 0; i < 3; i++) sprite(ctx, i < r.stars ? 'star' : 'starOff', tx + i * 66, py + 112, 6);
-      else text(ctx, 'เงินทุนหมดก่อนครบปี', tx, py + 150, '400 30px ' + KANIT, C.muted, 'left');
-      text(ctx, 'เงินสุดท้าย', W - 130, py + 58, '300 26px ' + KANIT, C.charcoal, 'right');
-      text(ctx, r.money.toLocaleString('en-US'), W - 130, py + 156, '700 96px ' + KANIT, C.charcoal, 'right');
-      text(ctx, 'บาท', W - 130, py + 192, '300 26px ' + KANIT, C.charcoal, 'right');
 
-      text(ctx, 'มาแข่งกัน เล่นฟรีที่ ' + host(), W / 2, 1192, '500 32px ' + KANIT, C.greenDark);
-      text(ctx, TAGLINE, W / 2, 1240, '600 28px ' + KANIT, C.charcoal);
-      contactLine(ctx, W / 2, 1282, 24);
-      fieldCurve(ctx, W, H, 44);
+      // header: logo (white wordmark on the dark card) and the game's name
+      var img = document.getElementById(t.dark ? 'brand-img' : 'brand-img-color');
+      if (img && img.complete && img.naturalWidth && !/^file:/.test(img.src)) {
+        ctx.imageSmoothingEnabled = true;
+        ctx.drawImage(img, 70, 62, 96, Math.round((96 * img.naturalHeight) / img.naturalWidth));
+        ctx.imageSmoothingEnabled = false;
+      } else {
+        sprite(ctx, 'brand', 78, 66, 5);
+      }
+      text(ctx, 'The Magic Farmcare', W - 70, 104, '700 40px ' + PIXEL, t.dark ? C.gold : C.greenDark, 'right');
+      text(ctx, 'การ์ดผลงานประจำปี · ' + t.label, W - 70, 144, '300 26px ' + KANIT, t.soft, 'right');
+
+      emblem(ctx, cx, cy, r, t);
+      SPARKLES.slice(0, t.sparkles).forEach(function (p, i) {
+        sparkle(ctx, cx + p[0], cy + p[1], 14 + (i % 3) * 8, t.dark ? '#FFF1BF' : '#FFFFFF');
+      });
+      ribbon(ctx, cx, cy + 100, 620, 92, t, r.rank);
+
+      // stars and money
+      if (r.tier !== 'bankrupt') {
+        for (var s = 0; s < 3; s++) sprite(ctx, s < r.stars ? 'star' : 'starOff', cx - 145 + s * 105, 712, 9);
+      } else {
+        text(ctx, 'เงินทุนหมดก่อนครบปี', cx, 768, '500 36px ' + KANIT, t.soft);
+      }
+      text(ctx, 'เงินสุดท้าย', cx, 852, '300 28px ' + KANIT, t.soft);
+      ctx.font = '700 128px ' + KANIT;
+      var amount = r.money.toLocaleString('en-US'), aw = ctx.measureText(amount).width;
+      ctx.font = '400 40px ' + KANIT;
+      var bw = ctx.measureText(' บาท').width, ax = cx - (aw + bw) / 2;
+      text(ctx, amount, ax, 968, '700 128px ' + KANIT, t.dark ? C.gold : t.ink, 'left');
+      text(ctx, ' บาท', ax + aw, 968, '400 40px ' + KANIT, t.soft, 'left');
+
+      // three stats from this player's year
+      var tw = 290, gap = 25, tx0 = (W - tw * 3 - gap * 2) / 2, ty = 1006, th = 108;
+      statTile(ctx, tx0, ty, tw, th, t, r.cropIcon, r.totalKg.toLocaleString('en-US') + ' กก.', 'ผลผลิตทั้งปี');
+      statTile(ctx, tx0 + tw + gap, ty, tw, th, t, { name: 'bottle', over: { x: '#2f74c9' } }, r.correct + '/' + r.treated + ' ครั้ง', 'เลือกยาถูก');
+      statTile(ctx, tx0 + (tw + gap) * 2, ty, tw, th, t, { name: 'coin' }, (r.profit >= 0 ? '+' : '') + r.profit.toLocaleString('en-US'), 'กำไรทั้งปี (บาท)');
+
+      // footer from the CI
+      text(ctx, 'มาแข่งกัน เล่นฟรีที่ ' + host(), cx, 1170, '500 32px ' + KANIT, t.dark ? C.gold : C.greenDark);
+      text(ctx, TAGLINE, cx, 1216, '600 26px ' + KANIT, t.dark ? '#FFFFFF' : C.charcoal);
+      contactLine(ctx, cx, 1256, 22, 'center', t.dark ? t.soft : C.charcoal);
       return k.canvas;
     });
   }
