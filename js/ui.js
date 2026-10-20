@@ -810,6 +810,18 @@
 
   /* ---------- boot ---------- */
 
+  /* a small nod to home: tapping Phra That Phanom in the background rings a temple bell */
+  var THAT_WORDS = [
+    'พระธาตุพนม ปูชนียสถานคู่บ้านคู่เมืองนครพนม',
+    'สาธุ ขอให้ฝนตกต้องตามฤดูกาล พืชผลงอกงาม',
+    'ธนาพันธ์ ฟาร์มแคร์ ตั้งอยู่ที่ อ.ธาตุพนม จ.นครพนม',
+  ];
+  var thatCount = 0;
+  function thatPhanom() {
+    sfx('bell');
+    toast(THAT_WORDS[thatCount++ % THAT_WORDS.length]);
+  }
+
   function boot(data) {
     A.setMusic(settings.music);
     A.setSfx(settings.sfx);
@@ -819,6 +831,8 @@
     scene = MF.createScene($('scene'));
     scene.onTap(function (i) { if (state && state.stage === 'plan') openPlot(i); });
     titleScene = MF.createScene($('title-canvas'));
+    scene.onThatPhanom(thatPhanom);
+    titleScene.onThatPhanom(thatPhanom);
     bind();
 
     // a live republish carries the open game over; an older version's game is dropped

@@ -111,6 +111,63 @@
     rect(ctx, 66, 41, 4, 30, '#a8875a');
   }
 
+  /* Phra That Phanom in the distance: the square white stupa with gold bands and a gold spire,
+     a few kilometres from the company in That Phanom. Lit from the left like the mountains. */
+  var THAT = [
+    '......y......',
+    '......y......',
+    '......y......',
+    '.....yyY.....',
+    '.....yyY.....',
+    '.....yyY.....',
+    '.....wwW.....',
+    '.....wwW.....',
+    '.....wwW.....',
+    '....wwwWW....',
+    '....wwwWW....',
+    '...wwwwWWW...',
+    '...yyyyYYY...',
+    '...wwwwWWW...',
+    '....wwwWW....',
+    '...yyyyYYY...',
+    '..yyyyyyyYY..',
+    '..wwwwwwwWW..',
+    '..wwwyyyWWW..',
+    '..wwwyYyWWW..',
+    '..wwwyYyWWW..',
+    '..wwwwwwWWW..',
+    '.yyyyyyyyyYY.',
+    '.wwwwwwwwwWW.',
+    '.wywywywywYW.',
+    '.wwwwwwwwwWW.',
+    'yyyyyyyyyyyYY',
+    'wwwwwwwwwwwWW',
+  ];
+  var THAT_PAL = { w: '#f6f2e4', W: '#cdc5ad', y: '#ecbb32', Y: '#b8861c' };
+  var THAT_X = 88, THAT_Y = 10; // top-left; the terrace sits on the far bank at y 37
+
+  function drawThatPhanom(ctx, t, view, thatAt) {
+    var hazy = view.weather === 'humid' || view.weather === 'flood';
+    if (hazy) ctx.globalAlpha = 0.6;
+    THAT.forEach(function (row, y) {
+      for (var x = 0; x < row.length; x++) {
+        if (row[x] !== '.') rect(ctx, THAT_X + x, THAT_Y + y, 1, 1, THAT_PAL[row[x]]);
+      }
+    });
+    // temple trees at its foot
+    rect(ctx, THAT_X - 4, THAT_Y + 24, 4, 4, '#3f6b4f'); rect(ctx, THAT_X - 3, THAT_Y + 23, 2, 1, '#3f6b4f');
+    rect(ctx, THAT_X + 13, THAT_Y + 25, 5, 3, '#3f6b4f'); rect(ctx, THAT_X + 14, THAT_Y + 24, 3, 1, '#3f6b4f');
+    ctx.globalAlpha = 1;
+    // the gold tip catches the sun now and then, and right after a tap
+    var tapped = thatAt && t - thatAt < 1500;
+    if (!hazy && (tapped || (!reduceMotion && t % 7000 < 350))) {
+      var cx = THAT_X + 6, cy = THAT_Y;
+      rect(ctx, cx, cy - 2, 1, 1, '#ffffff'); rect(ctx, cx - 2, cy, 1, 1, '#ffffff'); rect(ctx, cx + 2, cy, 1, 1, '#ffffff');
+      rect(ctx, cx, cy, 1, 1, '#fff6c8');
+      if (tapped) { rect(ctx, cx - 3, cy + 3, 1, 1, '#fff6c8'); rect(ctx, cx + 3, cy + 5, 1, 1, '#fff6c8'); }
+    }
+  }
+
   /* Thanapun Farmcare signboard at the head of the path */
   function drawSign(ctx) {
     var x = 13, y = 20;
@@ -306,7 +363,7 @@
     var ctx = canvas.getContext('2d');
     ctx.imageSmoothingEnabled = false;
     var view = { season: 'rain', plots: [{}, {}, {}, {}], selected: null };
-    var running = false, last = 0, tapHandler = null;
+    var running = false, last = 0, tapHandler = null, thatHandler = null, thatAt = 0;
 
     function render(t) {
       var sky = skyFor(view);
@@ -319,6 +376,7 @@
       if (view.weather === 'flood') drawCloud(ctx, ((drift * 0.8 + 60) % (W + 40)) - 30, 1, true);
       drawMountains(ctx);
       drawGround(ctx, view.season);
+      drawThatPhanom(ctx, t, view, thatAt);
       drawRiver(ctx, t, view.season);
       drawSign(ctx);
       drawPalm(ctx, t);
@@ -334,12 +392,18 @@
     }
 
     canvas.addEventListener('click', function (e) {
-      if (!tapHandler) return;
+      if (!tapHandler && !thatHandler) return;
       var b = canvas.getBoundingClientRect();
       var x = ((e.clientX - b.left) / b.width) * W, y = ((e.clientY - b.top) / b.height) * H;
+      if (thatHandler && x >= THAT_X - 2 && x <= THAT_X + 15 && y >= THAT_Y - 4 && y <= THAT_Y + 29) {
+        thatAt = performance.now();
+        if (!running || reduceMotion) render(thatAt);
+        thatHandler();
+        return;
+      }
       for (var i = 0; i < PLOT_RECTS.length; i++) {
         var r = PLOT_RECTS[i];
-        if (x >= r.x - 2 && x <= r.x + r.w + 2 && y >= r.y - 2 && y <= r.y + r.h + 2) { tapHandler(i); return; }
+        if (tapHandler && x >= r.x - 2 && x <= r.x + r.w + 2 && y >= r.y - 2 && y <= r.y + r.h + 2) { tapHandler(i); return; }
       }
     });
 
@@ -357,6 +421,7 @@
       },
       stop: function () { running = false; },
       onTap: function (fn) { tapHandler = fn; },
+      onThatPhanom: function (fn) { thatHandler = fn; },
     };
   }
 
