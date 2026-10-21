@@ -141,6 +141,201 @@
     });
   }
 
+  /* ---------- LINE QR ----------
+     The shop's official LINE QR (img/line-qr.png) goes on the card. Where that image would block saving
+     the picture (the game opened as a local file), a plain QR of the same link is drawn instead by the
+     small encoder below: byte mode, error correction M, versions 1-10, best of the 8 masks. It follows
+     the QR standard (ISO/IEC 18004) as laid out in Project Nayuki's MIT-licensed QR Code generator. */
+  var QR_ECC = [0, 10, 16, 26, 18, 24, 16, 18, 22, 22, 26]; // error correction codewords per block, level M
+  var QR_BLOCKS = [0, 1, 1, 1, 2, 2, 4, 4, 4, 5, 5];
+  // the official image: 540 px with the code from 27 to 512
+  var QR_IMG = { size: 540, from: 27, to: 512 };
+
+  function gfMul(x, y) {
+    var z = 0;
+    for (var i = 7; i >= 0; i--) { z = (z << 1) ^ ((z >>> 7) * 0x11d); z ^= ((y >>> i) & 1) * x; }
+    return z;
+  }
+
+  function rsRemainder(data, degree) {
+    var div = [], root = 1, i, j;
+    for (i = 0; i < degree; i++) div.push(0);
+    div[degree - 1] = 1;
+    for (i = 0; i < degree; i++) {
+      for (j = 0; j < degree; j++) { div[j] = gfMul(div[j], root); if (j + 1 < degree) div[j] ^= div[j + 1]; }
+      root = gfMul(root, 2);
+    }
+    var out = div.map(function () { return 0; });
+    data.forEach(function (b) {
+      var f = b ^ out.shift();
+      out.push(0);
+      div.forEach(function (c, k) { out[k] ^= gfMul(c, f); });
+    });
+    return out;
+  }
+
+  function qrRawModules(v) {
+    var n = (16 * v + 128) * v + 64;
+    if (v >= 2) { var a = Math.floor(v / 7) + 2; n -= (25 * a - 10) * a - 55; if (v >= 7) n -= 36; }
+    return n;
+  }
+
+  // true = dark, as rows of booleans
+  function qrMatrix(str) {
+    var bytes = unescape(encodeURIComponent(str)).split('').map(function (c) { return c.charCodeAt(0); });
+    var v = 1;
+    while (v <= 10 && Math.floor(qrRawModules(v) / 8) - QR_ECC[v] * QR_BLOCKS[v] < bytes.length + (v < 10 ? 2 : 3)) v++;
+    if (v > 10) throw new Error('QR text too long');
+    var size = v * 4 + 17, raw = Math.floor(qrRawModules(v) / 8), dataLen = raw - QR_ECC[v] * QR_BLOCKS[v];
+
+    // data codewords: mode, length, bytes, terminator, padding
+    var bits = [];
+    var put = function (val, n) { for (var i = n - 1; i >= 0; i--) bits.push((val >>> i) & 1); };
+    put(4, 4); put(bytes.length, v < 10 ? 8 : 16);
+    bytes.forEach(function (b) { put(b, 8); });
+    put(0, Math.min(4, dataLen * 8 - bits.length));
+    put(0, (8 - (bits.length % 8)) % 8);
+    for (var pad = 0xec; bits.length < dataLen * 8; pad ^= 0xec ^ 0x11) put(pad, 8);
+    var data = [];
+    for (var i = 0; i < bits.length; i += 8) data.push(parseInt(bits.slice(i, i + 8).join(''), 2));
+
+    // split into blocks, add error correction, interleave
+    var nb = QR_BLOCKS[v], ecc = QR_ECC[v], nShort = nb - (raw % nb), shortLen = Math.floor(raw / nb), blocks = [], k = 0;
+    for (i = 0; i < nb; i++) {
+      var d = data.slice(k, k + shortLen - ecc + (i < nShort ? 0 : 1));
+      k += d.length;
+      var e = rsRemainder(d, ecc);
+      if (i < nShort) d.push(0);
+      blocks.push(d.concat(e));
+    }
+    var words = [];
+    for (i = 0; i < blocks[0].length; i++) blocks.forEach(function (b, j) { if (i !== shortLen - ecc || j >= nShort) words.push(b[i]); });
+
+    var m = [], fn = [];
+    for (i = 0; i < size; i++) { m.push([]); fn.push([]); for (k = 0; k < size; k++) { m[i].push(false); fn[i].push(false); } }
+    var set = function (x, y, dark) { m[y][x] = dark; fn[y][x] = true; };
+    for (i = 0; i < size; i++) { set(6, i, i % 2 === 0); set(i, 6, i % 2 === 0); }
+    [[3, 3], [size - 4, 3], [3, size - 4]].forEach(function (c) {
+      for (var dy = -4; dy <= 4; dy++) for (var dx = -4; dx <= 4; dx++) {
+        var dist = Math.max(Math.abs(dx), Math.abs(dy)), x = c[0] + dx, y = c[1] + dy;
+        if (x >= 0 && x < size && y >= 0 && y < size) set(x, y, dist !== 2 && dist !== 4);
+      }
+    });
+    var align = [];
+    if (v > 1) {
+      var na = Math.floor(v / 7) + 2, step = Math.ceil((v * 4 + 4) / (na * 2 - 2)) * 2;
+      align = [6];
+      for (var pos = size - 7; align.length < na; pos -= step) align.splice(1, 0, pos);
+    }
+    align.forEach(function (ax, ai) {
+      align.forEach(function (ay, aj) {
+        var last = align.length - 1;
+        if ((ai === 0 && aj === 0) || (ai === 0 && aj === last) || (ai === last && aj === 0)) return;
+        for (var dy = -2; dy <= 2; dy++) for (var dx = -2; dx <= 2; dx++) set(ax + dx, ay + dy, Math.max(Math.abs(dx), Math.abs(dy)) !== 1);
+      });
+    });
+    var bit = function (x, n) { return ((x >>> n) & 1) !== 0; };
+    var format = function (mask) {
+      var d = mask, r = d; // level M is 00
+      for (var j = 0; j < 10; j++) r = (r << 1) ^ ((r >>> 9) * 0x537);
+      var b = ((d << 10) | r) ^ 0x5412, q;
+      for (q = 0; q <= 5; q++) set(8, q, bit(b, q));
+      set(8, 7, bit(b, 6)); set(8, 8, bit(b, 7)); set(7, 8, bit(b, 8));
+      for (q = 9; q < 15; q++) set(14 - q, 8, bit(b, q));
+      for (q = 0; q < 8; q++) set(size - 1 - q, 8, bit(b, q));
+      for (q = 8; q < 15; q++) set(8, size - 15 + q, bit(b, q));
+      set(8, size - 8, true);
+    };
+    format(0);
+    if (v >= 7) {
+      var r = v;
+      for (i = 0; i < 12; i++) r = (r << 1) ^ ((r >>> 11) * 0x1f25);
+      var vb = (v << 12) | r;
+      for (i = 0; i < 18; i++) { var a = size - 11 + (i % 3), b = Math.floor(i / 3); set(a, b, bit(vb, i)); set(b, a, bit(vb, i)); }
+    }
+    // codewords zigzag up and down two columns at a time
+    var n = 0;
+    for (var right = size - 1; right >= 1; right -= 2) {
+      if (right === 6) right = 5;
+      for (var vert = 0; vert < size; vert++) for (var j = 0; j < 2; j++) {
+        var x = right - j, y = ((right + 1) & 2) === 0 ? size - 1 - vert : vert;
+        if (!fn[y][x] && n < words.length * 8) { m[y][x] = bit(words[n >>> 3], 7 - (n & 7)); n++; }
+      }
+    }
+
+    var MASKS = [
+      function (x, y) { return (x + y) % 2 === 0; }, function (x, y) { return y % 2 === 0; },
+      function (x) { return x % 3 === 0; }, function (x, y) { return (x + y) % 3 === 0; },
+      function (x, y) { return (Math.floor(x / 3) + Math.floor(y / 2)) % 2 === 0; }, function (x, y) { return ((x * y) % 2) + ((x * y) % 3) === 0; },
+      function (x, y) { return (((x * y) % 2) + ((x * y) % 3)) % 2 === 0; }, function (x, y) { return (((x + y) % 2) + ((x * y) % 3)) % 2 === 0; },
+    ];
+    var flip = function (mask) {
+      for (var y = 0; y < size; y++) for (var x = 0; x < size; x++) if (!fn[y][x] && MASKS[mask](x, y)) m[y][x] = !m[y][x];
+    };
+    var best = 0, bestScore = Infinity;
+    for (var mask = 0; mask < 8; mask++) {
+      flip(mask); format(mask);
+      var sc = qrPenalty(m);
+      if (sc < bestScore) { bestScore = sc; best = mask; }
+      flip(mask); // flipping again undoes it
+    }
+    flip(best); format(best);
+    return m;
+  }
+
+  // the standard's mask penalty: long runs, 2x2 blocks, finder-like patterns, dark/light balance
+  function qrPenalty(m) {
+    var size = m.length, score = 0, dark = 0, x, y;
+    var lines = [];
+    for (y = 0; y < size; y++) { lines.push(m[y]); lines.push(m.map(function (row) { return row[y]; })); }
+    lines.forEach(function (line) {
+      var run = 1;
+      for (var i = 1; i <= size; i++) {
+        if (i < size && line[i] === line[i - 1]) run++;
+        else { if (run >= 5) score += run - 2; run = 1; }
+      }
+      var s = line.map(function (b) { return b ? '1' : '0'; }).join('');
+      score += 40 * ((s.match(/(?=10111010000)/g) || []).length + (s.match(/(?=00001011101)/g) || []).length);
+    });
+    for (y = 0; y < size; y++) for (x = 0; x < size; x++) {
+      if (m[y][x]) dark++;
+      if (x < size - 1 && y < size - 1 && m[y][x] === m[y][x + 1] && m[y][x] === m[y + 1][x] && m[y][x] === m[y + 1][x + 1]) score += 3;
+    }
+    var total = size * size;
+    return score + 10 * (Math.ceil(Math.abs(dark * 20 - total * 10) / total) - 1);
+  }
+
+  /* the LINE QR on a white rounded tile w wide, black on white with at least a 4-module quiet zone and
+     the caption below; returns the tile's height */
+  function lineQr(ctx, x, y, w, t) {
+    var c = MF.CONFIG.contact || {};
+    var img = document.getElementById('line-qr-img');
+    var official = img && img.complete && img.naturalWidth && !/^file:/.test(img.src);
+    var matrix = official ? null : qrMatrix(c.lineQr || c.line);
+    var mods = official ? 29 : matrix.length;
+    // whole pixels per module for the drawn code, so its edges stay sharp
+    var cell = official ? w / (mods + 8) : Math.floor(w / (mods + 8)), code = cell * mods, quiet = (w - code) / 2;
+    var capH = 28, h = w + capH;
+    roundRect(ctx, x, y, w, h, 18);
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fill();
+    ctx.lineWidth = 2; ctx.strokeStyle = t.dark ? 'rgba(217,180,74,0.7)' : C.border; ctx.stroke();
+    var qx = Math.round(x + quiet), qy = Math.round(y + quiet);
+    if (official) {
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(img, QR_IMG.from, QR_IMG.from, QR_IMG.to - QR_IMG.from, QR_IMG.to - QR_IMG.from, qx, qy, code, code);
+      ctx.imageSmoothingEnabled = false;
+    } else {
+      ctx.fillStyle = '#000000';
+      matrix.forEach(function (row, j) {
+        row.forEach(function (on, i) { if (on) ctx.fillRect(qx + i * cell, qy + j * cell, cell, cell); });
+      });
+    }
+    text(ctx, 'แสกนแอด LINE ร้าน', x + w / 2, y + h - 16, '600 19px ' + KANIT, C.charcoal);
+    return h;
+  }
+
   function host() { return MF.CONFIG.shareUrl.replace(/^https?:\/\//, '').replace(/\/$/, ''); }
 
   /* ---------- rank card ----------
@@ -454,8 +649,8 @@
       sprite(ctx, icon.name, x + 22, y + (h - c.height * s) / 2, s, icon.over);
     }
     var tx = x + (icon ? 80 : 24);
-    text(ctx, value, tx, y + 54, '600 34px ' + KANIT, t.ink, 'left');
-    text(ctx, label, tx, y + 88, '300 22px ' + KANIT, t.soft, 'left');
+    text(ctx, value, tx, y + Math.round(h * 0.5), '600 32px ' + KANIT, t.ink, 'left');
+    text(ctx, label, tx, y + Math.round(h * 0.82), '300 22px ' + KANIT, t.soft, 'left');
   }
 
   /* Rank card, 1080 x 1350 (4:5 for LINE and Facebook feeds).
@@ -536,24 +731,26 @@
       } else {
         text(ctx, 'เงินทุนหมดก่อนครบปี', cx, 784, '500 36px ' + KANIT, t.soft);
       }
-      text(ctx, 'เงินสุดท้าย', cx, 864, '300 28px ' + KANIT, t.soft);
-      ctx.font = '700 128px ' + KANIT;
+      text(ctx, 'เงินสุดท้าย', cx, 846, '300 28px ' + KANIT, t.soft);
+      ctx.font = '700 120px ' + KANIT;
       var amount = r.money.toLocaleString('en-US'), aw = ctx.measureText(amount).width;
       ctx.font = '400 40px ' + KANIT;
       var bw = ctx.measureText(' บาท').width, ax = cx - (aw + bw) / 2;
-      text(ctx, amount, ax, 978, '700 128px ' + KANIT, t.dark ? C.gold : t.ink, 'left');
-      text(ctx, ' บาท', ax + aw, 978, '400 40px ' + KANIT, t.soft, 'left');
+      text(ctx, amount, ax, 944, '700 120px ' + KANIT, t.dark ? C.gold : t.ink, 'left');
+      text(ctx, ' บาท', ax + aw, 944, '400 40px ' + KANIT, t.soft, 'left');
 
       // three stats from this player's year
-      var tw = 290, gap = 25, tx0 = (W - tw * 3 - gap * 2) / 2, ty = 1010, th = 104;
+      var tw = 290, gap = 25, tx0 = (W - tw * 3 - gap * 2) / 2, ty = 962, th = 90;
       statTile(ctx, tx0, ty, tw, th, t, r.cropIcon, r.totalKg.toLocaleString('en-US') + ' กก.', 'ผลผลิตทั้งปี');
       statTile(ctx, tx0 + tw + gap, ty, tw, th, t, { name: 'bottle', over: { x: '#2f74c9' } }, r.correct + '/' + r.treated + ' ครั้ง', 'เลือกยาถูก');
       statTile(ctx, tx0 + (tw + gap) * 2, ty, tw, th, t, { name: 'coin' }, (r.profit >= 0 ? '+' : '') + r.profit.toLocaleString('en-US'), 'กำไรทั้งปี (บาท)');
 
-      // footer from the CI
-      text(ctx, 'มาแข่งกัน เล่นฟรีที่ ' + host(), cx, 1168, '500 32px ' + KANIT, t.dark ? C.gold : C.greenDark);
-      text(ctx, TAGLINE, cx, 1212, '600 26px ' + KANIT, t.dark ? '#FFFFFF' : C.charcoal);
-      contactLine(ctx, cx, 1252, 22, 'center', t.dark ? t.soft : C.charcoal);
+      // footer from the CI on the left, the shop's LINE QR on the right, both lined up with the stat tiles
+      var qw = 200, qx = W - tx0 - qw, qy = 1060;
+      var qh = lineQr(ctx, qx, qy, qw, t), mid = qy + qh / 2;
+      text(ctx, 'มาแข่งกัน เล่นฟรีที่ ' + host(), tx0 + 4, mid - 34, '500 30px ' + KANIT, t.dark ? C.gold : C.greenDark, 'left');
+      text(ctx, TAGLINE, tx0 + 4, mid + 12, '600 26px ' + KANIT, t.dark ? '#FFFFFF' : C.charcoal, 'left');
+      contactLine(ctx, tx0 + 4, mid + 56, 21, 'left', t.dark ? t.soft : C.charcoal);
       return k.canvas;
     });
   }

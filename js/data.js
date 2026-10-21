@@ -19,6 +19,7 @@
     contact: {
       lineId: '@thanapun',
       line: 'https://line.me/R/ti/p/@thanapun', // add-friend link of the LINE OA
+      lineQr: 'https://lin.ee/aWApQWW', // what the shop's official LINE QR (img/line-qr.png) encodes
       phone: '042-532096', // written as in the company CI
       map: 'https://maps.app.goo.gl/jhmKQMaDMEPxBMa6A',
     },

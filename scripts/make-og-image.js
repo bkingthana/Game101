@@ -29,12 +29,12 @@ var SAMPLES = [
   try {
     var page = await (await browser.newContext({ ignoreHTTPSErrors: true })).newPage();
     await page.goto('file://' + path.join(rootDir, 'index.html'));
-    // file:// images would taint the canvas, so hand the logos over as data URLs
+    // file:// images would taint the canvas, so hand the logos and the LINE QR over as data URLs
     await page.evaluate(function (logos) {
       return Promise.all(Object.keys(logos).map(function (id) {
         return new Promise(function (resolve) { var img = document.getElementById(id); img.onload = resolve; img.src = logos[id]; });
       }));
-    }, { 'brand-img': dataUrl('logo-thanapun-dark.png'), 'brand-img-color': dataUrl('logo-thanapun-color.png') });
+    }, { 'brand-img': dataUrl('logo-thanapun-dark.png'), 'brand-img-color': dataUrl('logo-thanapun-color.png'), 'line-qr-img': dataUrl('line-qr.png') });
     await page.evaluate(function () { return document.fonts.ready; });
     save(await page.evaluate(function () { return MF.share.poster().then(function (c) { return c.toDataURL('image/png'); }); }), path.join(rootDir, 'img', 'og-image.png'));
     if (process.argv[2]) {

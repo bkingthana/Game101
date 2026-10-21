@@ -116,6 +116,7 @@
       results: null,
       history: [],
       stats: { treated: 0, correct: 0, kg: Object.keys(MF.CROPS).reduce(function (o, k) { o[k] = 0; return o; }, {}), revenue: 0, cost: 0 },
+      mistakes: {},
       seasonCost: 0,
       tutorial: {},
     };
@@ -328,6 +329,7 @@
     p.acid = Math.max(0, acid - cut);
     r.soilAfter = { N: p.soil.N, P: p.soil.P, K: p.soil.K };
     r.tips = cropTips(p, crop, season, w, respond, r.factors);
+    noteMistakes(state, p, crop, crop.baseYield * suit * r.price, r.factors);
     state.stats.kg[p.use] = (state.stats.kg[p.use] || 0) + r.kg;
     return r;
   }
@@ -392,6 +394,76 @@
       return bought.some(function (b) { return MF.PREVENTIONS[b].prevents[id]; });
     }).map(function (id) { return MF.EVENTS[id].name; });
     return [{ tone: 'good', text: 'ป้องกันไว้ตั้งแต่ปลูก ฤดูนี้ไม่เกิด' + kept.join(' และ') }];
+  }
+
+  /* ---------- what to buy next time ----------
+     Every harvest adds the costly mistakes behind its tips to state.mistakes, keyed so one mistake made
+     in several seasons adds up: { key: { kind, id, cost, n } }, cost in baht of crop lost (a rough
+     estimate, used only to put the worst first). Saves from before this have no mistakes, read as none. */
+  function addMistake(state, kind, id, cost) {
+    var m = (state.mistakes = state.mistakes || {});
+    var key = kind + ':' + id;
+    if (!m[key]) m[key] = { kind: kind, id: id, cost: 0, n: 0 };
+    m[key].cost += Math.max(0, Math.round(cost));
+    m[key].n++;
+  }
+
+  // full: what the plot could have earned with nothing going wrong
+  function noteMistakes(state, p, crop, full, f) {
+    if (f.pest && f.pest.outcome !== 'correct') {
+      var e = MF.EVENTS[f.eventId];
+      addMistake(state, 'pest', f.eventId, full * (f.pest.loss - e.loss * (1 - (e.cure || 0.9))));
+    }
+    // a prevention that covers what struck this plot, not bought at planting
+    if (f.eventId && !(p.prevent || []).some(function (id) { return MF.PREVENTIONS[id].prevents[f.eventId]; })) {
+      var best = preventionsFor(p.use).filter(function (id) { return MF.PREVENTIONS[id].prevents[f.eventId]; })
+        .sort(function (a, b) { return MF.PREVENTIONS[b].prevents[f.eventId] - MF.PREVENTIONS[a].prevents[f.eventId]; })[0];
+      if (best) addMistake(state, 'prevent', best + '>' + f.eventId, full * f.pest.loss * MF.PREVENTIONS[best].prevents[f.eventId]);
+    }
+    if (f.acidLoss) addMistake(state, 'acid', 'soil', full * (f.acidLoss + (1 - f.acidP) * 0.3));
+    if (f.nf < 0.95) {
+      var short = f.short && f.short.length ? f.short : [f.limiting];
+      addMistake(state, 'nutrient', short.join(''), full * (1 - f.nf));
+    }
+  }
+
+  // the first fertilizer formula in a NUTRIENT_FIX note, e.g. '0-0-60'
+  function formula(note) { var m = /\d+-\d+-\d+/.exec(note || ''); return m ? m[0] : note; }
+
+  /* The player's mistakes as a short shopping list, worst first, using only generic names: fertilizer
+     formulas, active ingredients and product types. A shortage of several nutrients at once counts toward
+     each of them, so the list says plainly which straight fertilizer each one needs.
+     [{ key, label, fix, line, cost }] */
+  function buyList(state, max) {
+    var m = state.mistakes || {}, seen = {}, out = [], merged = {};
+    Object.keys(m).forEach(function (key) {
+      var x = m[key];
+      if (x.kind !== 'nutrient') { merged[key] = x; return; }
+      x.id.split('').forEach(function (k, i, all) {
+        var y = merged['nutrient:' + k] || (merged['nutrient:' + k] = { kind: 'nutrient', id: k, cost: 0, n: 0 });
+        y.cost += x.cost / all.length;
+        y.n += x.n;
+      });
+    });
+    Object.keys(merged).map(function (key) { return merged[key]; }).sort(function (a, b) { return b.cost - a.cost; }).forEach(function (x) {
+      var item = null;
+      if (x.kind === 'nutrient' && MF.NUTRIENT_FIX[x.id]) {
+        item = { label: 'ดินขาด ' + x.id, fix: formula(MF.NUTRIENT_FIX[x.id]) };
+      } else if (x.kind === 'pest' && MF.EVENTS[x.id]) {
+        item = { label: MF.EVENTS[x.id].name, fix: MF.EVENTS[x.id].correct.slice(0, 3).map(function (id) { return MF.PRODUCTS[id].name; }).join(' / ') };
+      } else if (x.kind === 'prevent') {
+        var ids = x.id.split('>'), pv = MF.PREVENTIONS[ids[0]], ev = MF.EVENTS[ids[1]];
+        if (pv && ev) item = { label: 'กัน' + ev.name + 'ตั้งแต่ปลูก', fix: pv.name };
+      } else if (x.kind === 'acid') {
+        item = { label: 'ดินเปรี้ยว', fix: MF.AMENDMENTS.dolomite.name };
+      }
+      if (!item || x.cost <= 0) return;
+      var line = item.label + ' → ' + item.fix;
+      if (seen[line]) return;
+      seen[line] = true;
+      out.push({ key: x.kind + ':' + x.id, label: item.label, fix: item.fix, line: line, cost: Math.round(x.cost) });
+    });
+    return out.slice(0, max || 5);
   }
 
   function harvest(state) {
@@ -472,6 +544,7 @@
     harvest: harvest,
     nextSeason: nextSeason,
     stars: stars,
+    buyList: buyList,
     isCurrentSave: isCurrentSave,
   };
 
