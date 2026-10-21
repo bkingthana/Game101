@@ -116,7 +116,7 @@
 
   /* best: 'basal' (รองพื้น ตอนปลูก) / 'top' (แต่งหน้า ช่วงดูแล) / 'any'
      add: soil units one bag gives. Compound formulas give about 0.8 x their percentage (rounded down);
-     46-0-0 and 0-0-60 give 30, the most one bag lifts a nutrient; 21-0-0 is scaled like 46-0-0 per % of N
+     46-0-0 and 0-0-60 give 30, the most one bag lifts a nutrient (18-46-0's P is held to 30 too); 21-0-0 is scaled like 46-0-0 per % of N
      (21 x 30/46), so a baht buys less N with it than with urea, as at real prices.
      cost: game price per bag = average Thai retail price per 50 kg bag / Thai retail urea (979 baht, 2026)
      x urea's game price 490, rounded to 10. Every item, organic and dolomite included, is on that one basis.
@@ -127,6 +127,7 @@
   MF.FERTS = {
     f16200: { name: '16-20-0', tag: 'เน้นฟอสฟอรัส', desc: 'ใช้เมื่อดินขาด P เป็นหลัก ขาด N เล็กน้อย และ K พอแล้ว ช่วยเร่งราก', cost: 490, add: { N: 12, P: 16, K: 0 }, best: 'basal', color: '#c9412f' },
     f30200: { name: '30-20-0', tag: 'N และ P สูง', desc: 'ใช้เมื่อดินขาดทั้ง N และ P แต่ K พอแล้ว', cost: 620, add: { N: 24, P: 16, K: 0 }, best: 'basal', color: '#1f8fa8' },
+    f18460: { name: '18-46-0', tag: 'P สูงมาก', desc: 'ใช้เมื่อดินขาด P มาก และขาด N บ้าง โดย K พอแล้ว ถุงเดียวให้ P มากที่สุด', cost: 640, add: { N: 14, P: 30, K: 0 }, best: 'basal', color: '#3d3a4b' },
     f151515: { name: '15-15-15', tag: 'ปุ๋ยสูตรเสมอ', desc: 'ใช้เมื่อดินขาด N P K พอๆ กัน ใส่ได้ทุกช่วง', cost: 550, add: { N: 12, P: 12, K: 12 }, best: 'any', color: '#2f74c9' },
     f2088: { name: '20-8-8', tag: 'เน้นไนโตรเจน', desc: 'ใช้เมื่อดินขาด N เป็นหลัก และขาด P K เล็กน้อย ใส่ได้ทุกช่วง', cost: 490, add: { N: 16, P: 6, K: 6 }, best: 'any', color: '#9c8f1a' },
     organic: { name: 'อินทรีย์', tag: 'ปุ๋ยมูลไก่อัดเม็ด', desc: 'ธาตุอาหารน้อย แต่ดินร่วนซุย เสื่อมช้าลง และช่วยลดดินเปรี้ยวได้เล็กน้อย', cost: 230, add: { N: 6, P: 6, K: 6 }, best: 'basal', soilCare: true, acidCut: 1, color: '#7a5230' },
@@ -345,9 +346,9 @@
   /* what to use for the nutrients a harvest came up short of; the key lists the short ones in N P K order */
   MF.NUTRIENT_FIX = {
     N: '46-0-0 ถ้าขาดไม่มาก 21-0-0 ก็พอ หรือปลูกปอเทือง',
-    P: '16-20-0',
+    P: '16-20-0 ถ้าขาดมากใช้ 18-46-0',
     K: '0-0-60',
-    NP: '30-20-0 ที่ให้ทั้ง N และ P',
+    NP: '30-20-0 ที่ให้ทั้ง N และ P ถ้าขาด P มากใช้ 18-46-0',
     NK: '20-8-8 หรือ 25-7-7 ถ้าขาด K มากใช้ 0-0-60 คู่กับ 46-0-0',
     PK: '15-15-15 หรือ 16-20-0 คู่กับ 0-0-60',
     NPK: '15-15-15 แล้วแต่งหน้าเพิ่มตามธาตุที่ยังขาด',
@@ -367,7 +368,7 @@
     plotSheet: [
       'แถบสีคือธาตุอาหารในดิน N = ไนโตรเจน ทำให้ต้นโต ใบเขียว, P = ฟอสฟอรัส ช่วยราก, K = โพแทสเซียม ทำให้ผลผลิตหนัก หัวใหญ่',
       'ขีดสีดำคือระดับที่พืชต้องการ ถ้าแถบสั้นกว่าขีด ผลผลิตจะลดลง ใต้แถบบอกว่ายังขาดธาตุไหนเท่าไหร่',
-      'เลือกปุ๋ยตามธาตุที่ดินขาด ไม่ใช่ตามชนิดพืช เช่น ขาด N กับ P แต่ K พอ ใช้ 30-20-0 ขาดครบทั้งสามตัวใช้ 15-15-15',
+      'เลือกปุ๋ยตามธาตุที่ดินขาด ไม่ใช่ตามชนิดพืช เช่น ขาด N กับ P แต่ K พอ ใช้ 30-20-0 ขาด P มากใช้ 18-46-0 ขาดครบทั้งสามตัวใช้ 15-15-15',
       'ราคาปุ๋ยในเกมเทียบสัดส่วนจากราคาเฉลี่ยร้านค้าในไทย ถุงที่ถูกกว่าไม่ได้คุ้มกว่าเสมอ ดูว่าได้ธาตุที่ดินขาดเท่าไหร่',
     ],
     care: [
