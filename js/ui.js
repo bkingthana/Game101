@@ -874,7 +874,7 @@
         'แวะมาคุยกับทีมร้านได้ที่ อ.ธาตุพนม หรือทักทาง LINE ก่อนเริ่มฤดูปลูกจริง</p>';
     return '<section class="card buy-card"><h2>ซื้ออะไรดี</h2>' + body +
       (href ? '<a class="btn btn-line" href="' + esc(href) + '" target="_blank" rel="noopener" data-action="buy-list-line" data-n="' + list.length + '">' +
-        (list.length ? 'ส่งรายการนี้ถามร้านทาง LINE' : 'ทักร้านทาง LINE' + (c.lineId ? ' ' + esc(c.lineId) : '')) + '</a>' : '') + '</section>';
+        (list.length ? 'ส่งให้ลุงพันธ์ช่วยดูหน่อย' : 'ทักแชทลุงพันธ์') + '</a>' : '') + '</section>';
   }
 
   // the chat message: short, one line per item

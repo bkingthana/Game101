@@ -332,7 +332,7 @@
         row.forEach(function (on, i) { if (on) ctx.fillRect(qx + i * cell, qy + j * cell, cell, cell); });
       });
     }
-    text(ctx, 'แสกนแอด LINE ร้าน', x + w / 2, y + h - 16, '600 19px ' + KANIT, C.charcoal);
+    text(ctx, 'ทักแชทลุงพันธ์', x + w / 2, y + h - 16, '600 19px ' + KANIT, C.charcoal);
     return h;
   }
 
