@@ -761,7 +761,7 @@
       '<div class="end-coach">' + S.img('lung', 4) + '<p><b>ลุงพันธ์</b>' +
       esc(bankrupt ? 'เงินเหลือไม่พอซื้อเมล็ดพันธุ์ฤดูต่อไป ลองวางแผนปุ๋ยและยาให้คุ้มค่ากว่านี้ แล้วกลับมาใหม่นะ' : END_MSG[stars]) + '</p></div>' +
       '<div class="end-share"><button class="btn btn-primary" data-action="share-card">แชร์รูปผลคะแนน<small>ส่งให้เพื่อนใน LINE หรือโพสต์ Facebook</small></button>' +
-      '<button class="btn btn-line" data-action="share-line">ชวนเพื่อนเล่นทาง LINE</button></div>' + buyListHtml() + contactHtml();
+      '<button class="btn btn-line" data-action="share-line">ชวนเพื่อนเล่นทาง LINE</button></div>' + shopCardHtml();
     if (state.history.length) html += '<section class="card chart-card"><h2>เงินในมือหลังเก็บเกี่ยว</h2>' + moneyChart() + '</section>';
     html += '<section class="card stats-card"><h2>สถิติรอบนี้</h2><dl class="stats">' +
       Object.keys(MF.CROPS).filter(function (k) { return st.kg[k] > 0; }).map(function (k) {
@@ -859,37 +859,35 @@
     root.open('https://line.me/R/share?text=' + encodeURIComponent(text), '_blank', 'noopener');
   }
 
-  /* "ซื้ออะไรดี": what this player's year went short of, as generic names (formulas, active ingredients),
-     worst first, with a button that opens a chat to the shop's LINE with the list already typed in */
-  function buyListHtml() {
+  /* "ซื้ออะไรดี" and the shop contact in one card: what this player's year went short of, as generic names
+     (formulas, active ingredients), worst first. The LINE button opens the shop's chat with the list already
+     typed in, or a plain chat when there is nothing to list; phone and map follow */
+  function shopCardHtml() {
     var c = MF.CONFIG.contact || {};
     var list = E.buyList(state, 5);
-    if (!list.length && !c.line) return '';
-    var href = list.length && c.lineId ? 'https://line.me/R/oaMessage/' + c.lineId + '/?' + encodeURIComponent(buyMessage(list)) : c.line;
     var body = list.length
       ? '<p>จากแปลงของคุณปีนี้ ลุงพันธ์แนะนำให้เตรียมไว้ฤดูหน้า</p><ol class="buy-list">' + list.map(function (b) {
         return '<li><p><b>' + esc(b.label) + '</b><span>' + esc(b.fix) + '</span></p></li>';
       }).join('') + '</ol><p class="buy-note">เป็นชื่อสูตรปุ๋ยและชื่อสารสำคัญ ถามร้านเรื่องสินค้าและอัตราใช้ได้</p>'
-      : '<p class="buy-good">' + (state.over === 'bankrupt' ? '' : 'ปีนี้เลือกปุ๋ยและยาได้ถูกต้องแทบไม่พลาดเลย เก่งมาก ') +
-        'แวะมาคุยกับทีมร้านได้ที่ อ.ธาตุพนม หรือทักทาง LINE ก่อนเริ่มฤดูปลูกจริง</p>';
-    return '<section class="card buy-card"><h2>ซื้ออะไรดี</h2>' + body +
-      (href ? '<a class="btn btn-line" href="' + esc(href) + '" target="_blank" rel="noopener" data-action="buy-list-line" data-n="' + list.length + '">' +
-        (list.length ? 'ส่งให้ลุงพันธ์ช่วยดูหน่อย' : 'ทักแชทลุงพันธ์') + '</a>' : '') + '</section>';
+      : (state.over === 'bankrupt' ? '' : '<p class="buy-good">ปีนี้เลือกปุ๋ยและยาได้ถูกต้องแทบไม่พลาดเลย เก่งมาก</p>');
+    var links = [];
+    if (list.length && c.lineId) {
+      links.push('<a class="btn btn-line" href="' + esc('https://line.me/R/oaMessage/' + c.lineId + '/?' + encodeURIComponent(buyMessage(list))) +
+        '" target="_blank" rel="noopener" data-action="buy-list-line" data-n="' + list.length + '">ทักแชทลุงพันธ์</a>');
+    } else if (c.line) {
+      links.push('<a class="btn btn-line" href="' + esc(c.line) + '" target="_blank" rel="noopener" data-action="contact" data-via="line">ทักแชทลุงพันธ์</a>');
+    }
+    if (c.phone) links.push('<a class="btn" href="tel:' + esc(c.phone.replace(/[^0-9+]/g, '')) + '" data-action="contact" data-via="phone">โทร ' + esc(c.phone) + '</a>');
+    if (c.map) links.push('<a class="btn" href="' + esc(c.map) + '" target="_blank" rel="noopener" data-action="contact" data-via="map">แผนที่ร้าน (Google Maps)</a>');
+    if (!list.length && !links.length) return '';
+    return '<section class="card contact-card buy-card"><h2>' + (list.length ? 'ซื้ออะไรดี' : 'ปรึกษาลุงพันธ์') + '</h2>' + body +
+      '<p>ทีมธนาพันธ์ ฟาร์มแคร์ อ.ธาตุพนม จ.นครพนม ยินดีให้คำแนะนำ</p>' +
+      (links.length ? '<div class="contact-links">' + links.join('') + '</div>' : '') + '</section>';
   }
 
   // the chat message: short, one line per item
   function buyMessage(list) {
     return 'สอบถามสินค้าตามรายการนี้ (จากเกม The Magic Farmcare)\n' + list.map(function (b, i) { return (i + 1) + '. ' + b.line; }).join('\n');
-  }
-
-  function contactHtml() {
-    var c = MF.CONFIG.contact || {}, links = [];
-    if (c.line) links.push('<a class="btn btn-line" href="' + esc(c.line) + '" target="_blank" rel="noopener" data-action="contact" data-via="line">แชทกับเราทาง LINE' + (c.lineId ? ' ' + esc(c.lineId) : '') + '</a>');
-    if (c.phone) links.push('<a class="btn" href="tel:' + esc(c.phone.replace(/[^0-9+]/g, '')) + '" data-action="contact" data-via="phone">โทร ' + esc(c.phone) + '</a>');
-    if (c.map) links.push('<a class="btn" href="' + esc(c.map) + '" target="_blank" rel="noopener" data-action="contact" data-via="map">แผนที่ร้าน (Google Maps)</a>');
-    if (!links.length) return '';
-    return '<section class="card contact-card"><h2>ปรึกษาเรื่องปุ๋ย ยา และเมล็ดพันธุ์</h2>' +
-      '<p>ทีมธนาพันธ์ ฟาร์มแคร์ อ.ธาตุพนม จ.นครพนม ยินดีให้คำแนะนำ</p><div class="contact-links">' + links.join('') + '</div></section>';
   }
 
   // custom events for Vercel Web Analytics (ignored where analytics is not loaded)
