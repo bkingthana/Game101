@@ -4,7 +4,9 @@
    carries a brand, badge or label.
    Still parts are painted once; each frame redraws only the small moving bits: the plot bobbing, clouds
    drifting and a gust of wind through the crops. createCover(canvas) has start() and stop() like
-   createScene, and draws one still frame when the viewer prefers reduced motion. */
+   createScene, and draws one still frame when the viewer prefers reduced motion. coverFrame(ctx, x, y,
+   scale, opts) draws that still frame into another picture, such as the link preview, and
+   coverSky(ctx, x, y, w, h, scale) paints its banded sky over any area. */
 (function (root) {
   var MF = (root.MF = root.MF || {});
   var W = 160, H = 120;
@@ -29,17 +31,17 @@
   function bayer(x, y) { return (BAYER[(y & 3) * 4 + (x & 3)] + 0.5) / 16; }
 
   // flat colour bands, each seam blended over three rows with an ordered dither (25%, 50%, 75%)
-  function bands(ctx, list, y0, y1) {
-    for (var y = y0; y < y1; y++) {
-      var b = 0;
-      while (b + 1 < list.length && y >= list[b + 1][0]) b++;
-      for (var x = 0; x < W; x++) {
-        var i = b, next = list[b + 1] && list[b + 1][0];
-        if (next !== undefined && next - y <= 3 && bayer(x, y) < (4 - (next - y)) / 4) i = b + 1;
-        rect(ctx, x, y, 1, 1, list[i][1]);
-      }
-    }
+  function bandColor(list, x, y) {
+    var b = 0;
+    while (b + 1 < list.length && y >= list[b + 1][0]) b++;
+    var next = list[b + 1] && list[b + 1][0];
+    return list[next !== undefined && next - y <= 3 && bayer(x, y) < (4 - (next - y)) / 4 ? b + 1 : b][1];
   }
+  function bands(ctx, list, y0, y1) {
+    for (var y = y0; y < y1; y++) for (var x = 0; x < W; x++) rect(ctx, x, y, 1, 1, bandColor(list, x, y));
+  }
+  // the cover's sky: deep blue at the top, the CI sky blue, a pale band from about two thirds down
+  var SKY = [[0, C.sky[2]], [30, C.sky[1]], [78, C.sky[0]]];
 
   /* A shape raster: shapes are filled into a sparse grid, then outlined with a chunky dark ring and painted.
      A colour argument may be a function (x, y, nx, ny) of the pixel and its position inside the shape. */
@@ -244,11 +246,11 @@
   }
 
   // draw the plot and everything on it back to front; a gust of wind runs across the crops
-  function drawPlot(ctx, t, L, dy) {
+  function drawPlot(ctx, t, L, dy, still) {
     ctx.drawImage(L.plot, 0, dy);
     L.things.forEach(function (o) {
       var x = Math.round(o.x), y = Math.round(o.y) + dy;
-      var gust = !reduceMotion && Math.sin(t / 700 - (o.p + o.q) * 5) > 0.55 ? 1 : 0;
+      var gust = !still && Math.sin(t / 700 - (o.p + o.q) * 5) > 0.55 ? 1 : 0;
       if (o.kind === 'veg') ctx.drawImage(L.veg[gust], x - 3, y - 4);
       else if (o.kind === 'rice') ctx.drawImage(L.rice[gust], x - 3, y - 6);
       else ctx.drawImage(L[o.kind].img, x - L[o.kind].ox, y - L[o.kind].oy);
@@ -261,20 +263,51 @@
       rice: [sprite(RICE, CROP_PAL), sprite(lean(RICE, 4), CROP_PAL)], hut: paintHut(), jar: paintJar(),
       things: plotThings(), clouds: [cloud(30), cloud(22), cloud(36)],
     };
-    bands(L.sky.getContext('2d'), [[0, C.sky[2]], [30, C.sky[1]], [78, C.sky[0]]], 0, H);
+    bands(L.sky.getContext('2d'), SKY, 0, H);
     paintPlot(L.plot.getContext('2d'));
     return L;
   }
 
   function bob(t, period) { return reduceMotion ? 0 : Math.round(Math.sin((t / period) * Math.PI * 2) * 1.5); }
 
-  // the sky, two clouds behind the plot, the plot bobbing slowly, one cloud drifting past in front
-  function draw(ctx, t, L) {
-    ctx.drawImage(L.sky, 0, 0);
-    drift(ctx, L.clouds[0], 8, 10, 0.004, t);
-    drift(ctx, L.clouds[1], 122, 30, 0.0028, t);
-    drawPlot(ctx, t, L, bob(t, 3600));
-    drift(ctx, L.clouds[2], 54, 100, 0.006, t);
+  // the sky, two clouds behind the plot, the plot bobbing slowly, one cloud drifting past in front;
+  // opts.sky false leaves the background transparent, opts.clouds false leaves the clouds out
+  function draw(ctx, t, L, opts) {
+    var o = opts || {}, still = reduceMotion || o.still;
+    if (o.sky !== false) ctx.drawImage(L.sky, 0, 0);
+    if (o.clouds !== false) {
+      drift(ctx, L.clouds[0], 8, 10, 0.004, t);
+      drift(ctx, L.clouds[1], 122, 30, 0.0028, t);
+    }
+    drawPlot(ctx, t, L, still ? 0 : bob(t, 3600), still);
+    if (o.clouds !== false) drift(ctx, L.clouds[2], 54, 100, 0.006, t);
+  }
+
+  /* ---------- a still frame for other pictures (the link preview) ---------- */
+  var shared = null;
+
+  /* Draw the cover's still frame (the one shown with reduced motion) into any 2D context, each picture
+     pixel as a scale x scale block with its top-left corner at (x, y), so it stays crisp. opts:
+     { sky: false } for a transparent background, { clouds: false } to leave the clouds out.
+     Returns the size drawn, { w, h }. */
+  function coverFrame(ctx, x, y, scale, opts) {
+    if (!shared) shared = build();
+    var o = Object.assign({}, opts, { still: true }), s = Math.max(1, Math.round(scale || 1));
+    var cv = canvas(W, H), c = cv.getContext('2d');
+    draw(c, 0, shared, o);
+    var smooth = ctx.imageSmoothingEnabled;
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(cv, x, y, W * s, H * s);
+    ctx.imageSmoothingEnabled = smooth;
+    return { w: W * s, h: H * s };
+  }
+
+  /* Fill a w x h area at (x, y) with the cover's banded sky in scale x scale blocks, the bands stretched
+     to the area's height, for pictures wider than the cover. */
+  function coverSky(ctx, x, y, w, h, scale) {
+    var s = Math.max(1, Math.round(scale || 1)), cols = Math.ceil(w / s), rows = Math.ceil(h / s);
+    var list = SKY.map(function (b) { return [Math.round((b[0] / H) * rows), b[1]]; });
+    for (var r = 0; r < rows; r++) for (var c = 0; c < cols; c++) rect(ctx, x + c * s, y + r * s, s, s, bandColor(list, c, r));
   }
 
   /* ---------- the controller ---------- */
@@ -308,4 +341,6 @@
   }
 
   MF.createCover = createCover;
+  MF.coverSky = coverSky;
+  MF.coverFrame = coverFrame;
 })(typeof window !== 'undefined' ? window : globalThis);
