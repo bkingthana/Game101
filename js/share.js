@@ -1,7 +1,8 @@
 /* The Magic Farmcare - share pictures: the result card players post to LINE or Facebook, and the
    link preview (img/og-image.png). They follow the Thanapun Farmcare corporate identity: white page,
    full-color logo, Kanit, the logo's green / gold / brown, rounded boxes, a field curve along the
-   bottom and the standard contact footer. Only the game's own name and farm scene stay pixel art. */
+   bottom and the standard contact footer. Only the game's own name, the That Phanom panorama and the
+   title cover's floating plot (MF.coverFrame / MF.coverSky in cover.js) stay pixel art. */
 (function (root) {
   var MF = (root.MF = root.MF || {});
   var S = MF.sprites;
@@ -15,8 +16,6 @@
   var TAGLINE = 'เคียงข้างทุกการเติบโต';
   // the short contact line from the CI; numbers and names exactly as the company writes them
   var CONTACT = [['phone', 'โทร 042-532096'], ['chat', 'LINE @thanapun'], ['facebook', 'FB: Thanapun Farmcare']];
-  // the farm at sunrise with a full harvest, as on the title screen
-  var SCENE = { season: 'cool', time: 'dawn', weather: null, plots: [{ use: 'rice', phase: 2 }, { use: 'corn', phase: 2 }, { use: 'shallot', phase: 2 }, { use: 'kale', phase: 2 }] };
   // Lucide line icons (24 x 24, 2 px stroke)
   var ICONS = {
     phone: 'M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z',
@@ -72,18 +71,6 @@
     ctx.drawImage(c, x, y, c.width * scale, c.height * scale);
   }
 
-  // the game's own scene renderer, scaled by a whole number, in a rounded frame
-  function scene(ctx, x, y, scale) {
-    var c = document.createElement('canvas');
-    MF.createScene(c).setView(SCENE);
-    var w = c.width * scale, h = c.height * scale;
-    ctx.save();
-    roundRect(ctx, x, y, w, h, 14);
-    ctx.clip();
-    ctx.drawImage(c, x, y, w, h);
-    ctx.restore();
-  }
-
   // the full-color logo; when the game is opened as a local file that image would block saving the
   // picture, so the pixel emblem stands in
   function logo(ctx, x, y, w, onDark) {
@@ -98,12 +85,6 @@
     var e = S.canvas('brand'), scale = Math.floor(w / e.width);
     sprite(ctx, 'brand', x + (w - e.width * scale) / 2, y, scale);
     return e.height * scale;
-  }
-
-  // the game's name, in its pixel lettering
-  function gameTitle(ctx, x, y, big, align) {
-    text(ctx, 'The Magic', x, y, '700 ' + Math.round(big * 0.42) + 'px ' + PIXEL, C.charcoal, align);
-    text(ctx, 'Farmcare', x, y + Math.round(big * 0.92), '700 ' + big + 'px ' + PIXEL, C.greenDark, align);
   }
 
   // layered fields from the logo: green, gold and brown curves along the bottom edge
@@ -760,36 +741,10 @@
     });
   }
 
-  /* Link preview, 1200 x 630, shown when the game's link is posted in LINE or Facebook. */
-  function poster() {
-    return fontsReady().then(function () {
-      var W = 1200, H = 630, k = makeCanvas(W, H), ctx = k.ctx;
-      logo(ctx, 64, 44, 120);
-      gameTitle(ctx, 62, 270, 96, 'left');
-      text(ctx, 'เกมวางแผนการเกษตร ปลูก ดูแล เก็บเกี่ยว', 64, 408, '500 28px ' + KANIT, C.charcoal, 'left');
-      text(ctx, 'ครบ 3 ฤดูใน 1 ปี ด้วยความรู้เกษตรจริง เล่นฟรี', 64, 450, '500 28px ' + KANIT, C.charcoal, 'left');
-      text(ctx, TAGLINE, 64, 512, '600 24px ' + KANIT, C.greenDark, 'left');
-      contactLine(ctx, 64, 552, 20, 'left');
-      scene(ctx, 680, 110, 3);
-      fieldCurve(ctx, W, H, 34);
-      return k.canvas;
-    });
-  }
-
-  /* ---------- link preview options built on the title cover (the floating farm plot) ---------- */
+  /* ---------- link preview ---------- */
 
   var BLURB = 'เกมวางแผนการเกษตร ครบ 3 ฤดูใน 1 ปี เล่นฟรี';
-  var TITLE_INK = { edge: '#0a130d', page: '#12241b', paper: '#fbfbf2', onDark: '#e6eed6', soft: '#a5b99f', button: '#f2b632' };
-
-  // the cover's still frame in a frame like the title screen's: a light border inside a dark ring, a drop below
-  function framedCover(ctx, x, y, scale, opts) {
-    var w = 160 * scale, h = 120 * scale, b = Math.round(scale * 2), ring = Math.round(scale * 2);
-    ctx.fillStyle = TITLE_INK.edge;
-    ctx.fillRect(x - b - ring, y - b - ring, w + 2 * (b + ring), h + 2 * (b + ring) + ring * 2);
-    ctx.fillStyle = TITLE_INK.paper;
-    ctx.fillRect(x - b, y - b, w + 2 * b, h + 2 * b);
-    MF.coverFrame(ctx, x, y, scale, opts);
-  }
+  var TITLE_INK = { edge: '#0a130d', page: '#12241b' }; // the title screen's darkest greens
 
   // "Farmcare" as the title screen letters it: cream to gold bands, a hard dark drop shadow
   function goldTitle(ctx, str, x, y, size, align) {
@@ -801,28 +756,9 @@
     text(ctx, str, x, y, '700 ' + size + 'px ' + PIXEL, g, align);
   }
 
-  // A: the current layout, with the floating plot on its banded sky in place of the farm scene
-  function posterA() {
-    return fontsReady().then(function () {
-      var W = 1200, H = 630, k = makeCanvas(W, H), ctx = k.ctx;
-      logo(ctx, 64, 44, 120);
-      gameTitle(ctx, 62, 270, 96, 'left');
-      text(ctx, 'เกมวางแผนการเกษตร ปลูก ดูแล เก็บเกี่ยว', 64, 408, '500 28px ' + KANIT, C.charcoal, 'left');
-      text(ctx, 'ครบ 3 ฤดูใน 1 ปี ด้วยความรู้เกษตรจริง เล่นฟรี', 64, 450, '500 28px ' + KANIT, C.charcoal, 'left');
-      text(ctx, TAGLINE, 64, 512, '600 24px ' + KANIT, C.greenDark, 'left');
-      contactLine(ctx, 64, 552, 20, 'left');
-      ctx.save();
-      roundRect(ctx, 672, 64, 480, 360, 14);
-      ctx.clip();
-      MF.coverFrame(ctx, 672, 64, 3);
-      ctx.restore();
-      fieldCurve(ctx, W, H, 34);
-      return k.canvas;
-    });
-  }
-
-  // B: the cover's sky across the whole poster like a 90s game box: a big plot, big pixel lettering
-  function posterB() {
+  /* Link preview, 1200 x 630, shown when the game's link is posted in LINE or Facebook: the title
+     cover's sky across the whole picture like a 90s game box, with a big floating plot and big pixel lettering. */
+  function poster() {
     return fontsReady().then(function () {
       var W = 1200, H = 630, k = makeCanvas(W, H), ctx = k.ctx;
       MF.coverSky(ctx, 0, 0, W, H, 5);
@@ -844,36 +780,11 @@
     });
   }
 
-  // C: the title screen itself: dark page, the framed cover, the title and a "play free" button
-  function posterC() {
-    return fontsReady().then(function () {
-      var W = 1200, H = 630, k = makeCanvas(W, H), ctx = k.ctx, cx = 900;
-      ctx.fillStyle = TITLE_INK.page;
-      ctx.fillRect(0, 0, W, H);
-      framedCover(ctx, 84, 126, 3);
-      var lh = logo(ctx, cx - 50, 50, 100, true);
-      text(ctx, 'The Magic', cx, 50 + lh + 66, '700 40px ' + PIXEL, TITLE_INK.onDark);
-      goldTitle(ctx, 'Farmcare', cx, 50 + lh + 156, 96);
-      text(ctx, 'เกมวางแผนการเกษตร ครบ 3 ฤดูใน 1 ปี', cx, 50 + lh + 214, '500 25px ' + KANIT, TITLE_INK.onDark);
-      // the gold button from the title screen
-      var bw = 300, bh = 70, bx = cx - bw / 2, by = 50 + lh + 248;
-      ctx.fillStyle = TITLE_INK.edge;
-      ctx.fillRect(bx - 4, by - 4, bw + 8, bh + 16);
-      ctx.fillStyle = TITLE_INK.button;
-      ctx.fillRect(bx, by, bw, bh);
-      ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.fillRect(bx, by, bw, 4); ctx.fillRect(bx, by, 4, bh);
-      ctx.fillStyle = 'rgba(0,0,0,0.14)'; ctx.fillRect(bx, by + bh - 4, bw, 4); ctx.fillRect(bx + bw - 4, by, 4, bh);
-      text(ctx, 'เล่นฟรี', cx, by + 48, '600 34px ' + KANIT, '#1b2a1e');
-      text(ctx, TAGLINE, cx, by + bh + 64, '500 22px ' + KANIT, TITLE_INK.soft);
-      return k.canvas;
-    });
-  }
-
   function toBlob(canvas) {
     return new Promise(function (resolve, reject) {
       canvas.toBlob(function (b) { if (b) resolve(b); else reject(new Error('toBlob failed')); }, 'image/png');
     });
   }
 
-  MF.share = { resultCard: resultCard, poster: poster, posterOptions: { A: posterA, B: posterB, C: posterC }, toBlob: toBlob };
+  MF.share = { resultCard: resultCard, poster: poster, toBlob: toBlob };
 })(typeof window !== 'undefined' ? window : globalThis);
