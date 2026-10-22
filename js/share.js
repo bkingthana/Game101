@@ -44,12 +44,17 @@
     return { canvas: c, ctx: ctx };
   }
 
+  /* Safari (WebKit) ignores textAlign right and center for some Thai strings and draws them from x as
+     if left-aligned, so the text is always drawn left-aligned from a start point worked out here from
+     its measured width. Every piece of text on the share pictures goes through this. */
   function text(ctx, str, x, y, font, color, align) {
     ctx.font = font;
     ctx.fillStyle = color;
-    ctx.textAlign = align || 'center';
+    ctx.textAlign = 'left';
     ctx.textBaseline = 'alphabetic';
-    ctx.fillText(str, x, y);
+    var a = align || 'center';
+    var w = a === 'left' ? 0 : ctx.measureText(str).width;
+    ctx.fillText(str, a === 'right' ? x - w : a === 'center' ? x - w / 2 : x, y);
   }
 
   function roundRect(ctx, x, y, w, h, r, keepPath) {
